@@ -1,0 +1,1898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Version Updated -->
+    <title>Gemini Chat + Mock Test (v9.4 - Audio Input)</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
+            svg: { fontCache: 'global' },
+            options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+    <!-- <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script> -->
+
+    <style>
+        /* --- Styles (v9.4 - Audio Feature Styles Added) --- */
+        /* Styles from v9.3 should be mostly sufficient */
+        :root { /* ... Theme Variables ... */
+             --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; --sidebar-width: 260px; --message-font-size-base: 1rem;
+            /* LIGHT */ --sidebar-bg: #f7f7f7; --main-bg: #ffffff; --input-bg: #ffffff; --border-color: #e0e0e0; --text-primary: #2c2c2c; --text-secondary: #5f5f5f; --text-placeholder: #999999; --accent-color: #d97a7a; --user-message-bg: #cce0ff; --user-message-text: #1c1c1c; --ai-message-bg: #f0f0f0; --ai-message-text: #2c2c2c; --button-bg: #f0f0f0; --button-hover-bg: #e0e0e0; --active-item-bg: #e0e0e0; --code-bg: #e8e8e8; --scrollbar-thumb: #ccc; --scrollbar-thumb-hover: #bbb; --app-outer-bg: #e8e8e8; --send-button-bg: var(--accent-color); --send-button-hover-bg: #c76b6b; --send-button-text: #ffffff; --error-bg: #ffebee; --error-text: #c62828; --error-border: #ef9a9a; --message-font-size: var(--message-font-size-base); --delete-button-color: #aaa; --delete-button-hover-color: #dc3545; --input-border-color: var(--border-color); --input-focus-border-color: var(--accent-color); --preview-bg: var(--button-bg); --preview-border: var(--border-color); --remove-btn-color: var(--text-secondary); --remove-btn-hover-color: var(--error-text);
+            /* Audio Specific */
+            --record-button-bg: #ff6b6b; --record-button-text: #ffffff; --stop-button-bg: #4a4a4a; --stop-button-text: #ffffff;
+        }
+        body.dark-theme { /* DARK */ --sidebar-bg: #2a2a2e; --main-bg: #1e1e1e; --input-bg: #2a2a2e; --border-color: #404040; --text-primary: #e0e0e0; --text-secondary: #a0a0a0; --text-placeholder: #777777; --accent-color: #e58b8b; --user-message-bg: #3a4a6b; --user-message-text: #e8e8e8; --ai-message-bg: #333333; --ai-message-text: #e0e0e0; --button-bg: #404040; --button-hover-bg: #505050; --active-item-bg: #454545; --code-bg: #2c2c2e; --scrollbar-thumb: #555; --scrollbar-thumb-hover: #666; --app-outer-bg: #121212; --send-button-bg: var(--accent-color); --send-button-hover-bg: #f09f9f; --send-button-text: #1e1e1e; --error-bg: #5c2b2b; --error-text: #ffcdd2; --error-border: #8c4343; --delete-button-color: #666; --delete-button-hover-color: #f09f9f; --input-border-color: var(--border-color); --input-focus-border-color: var(--accent-color); --preview-bg: var(--button-bg); --preview-border: var(--border-color); --remove-btn-color: var(--text-secondary); --remove-btn-hover-color: var(--error-text);
+            /* Audio Specific */
+             --record-button-bg: #ff8787; --record-button-text: #1e1e1e; --stop-button-bg: #777777; --stop-button-text: #e0e0e0;
+        }
+        body { font-family: var(--font-family); margin: 0; padding: 0; background-color: var(--app-outer-bg); color: var(--text-primary); font-size: 15px; transition: background-color 0.3s ease, color 0.3s ease; }
+
+        /* Layout & Structure */
+        .app-container { display: flex; height: 100vh; width: 100vw; overflow: hidden; } .app-container.hidden { display: none; }
+        .sidebar { width: var(--sidebar-width); background-color: var(--sidebar-bg); border-right: 1px solid var(--border-color); display: flex; flex-direction: column; padding: 15px 0; box-sizing: border-box; flex-shrink: 0; transition: background-color 0.3s ease, border-color 0.3s ease, width 0.3s ease; }
+        .main-container { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; overflow: hidden; position: relative; }
+        .main-content, .review-view { display: none; flex-direction: column; background-color: var(--main-bg); height: 100%; width: 100%; overflow: hidden; transition: background-color 0.3s ease; }
+        .main-content.active, .review-view.active { display: flex; }
+        .chat-area { flex-grow: 1; overflow-y: auto; padding: 30px 10% 20px; display: flex; flex-direction: column; max-width: 800px; margin: 0 auto; width: 80%; }
+        .input-container { padding: 15px 10% 20px; border-top: 1px solid var(--border-color); background-color: var(--input-bg); max-width: 800px; margin: 0 auto; width: 80%; transition: background-color 0.3s ease, border-color 0.3s ease; display: none; }
+
+        /* Sidebar Elements */
+         .sidebar-header { padding: 10px 20px; font-size: 1.1em; font-weight: 600; color: var(--text-primary); }
+         .sidebar-section { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; margin-top: 10px; }
+         .sidebar-section-title { padding: 5px 20px; font-size: 0.85em; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
+         /* All Tests Section */
+         #all-tests-section { border-bottom: 1px solid var(--border-color); margin-bottom: 10px; padding-bottom: 10px; flex-shrink: 0; display: flex; flex-direction: column; max-height: 40%; display: none; }
+         #all-tests-section.visible { display: flex; }
+         #test-search-input { width: calc(100% - 40px); padding: 8px 10px; margin: 5px 15px 10px 15px; border: 1px solid var(--input-border-color); background-color: var(--input-bg); color: var(--text-primary); border-radius: 6px; font-size: 0.9em; box-sizing: border-box; }
+         #test-search-input:focus { outline: none; border-color: var(--input-focus-border-color); }
+         #all-tests-list { overflow-y: auto; padding: 0 15px; flex-grow: 1; }
+         #all-tests-list::-webkit-scrollbar { width: 6px; } #all-tests-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px;} #all-tests-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+         .test-list-item { padding: 8px 10px; margin-bottom: 5px; border-radius: 6px; background-color: var(--button-bg); cursor: default; transition: background-color 0.2s ease; display: flex; flex-direction: column; gap: 5px; border: 1px solid var(--border-color); }
+         .test-list-item.hidden-by-search { display: none; }
+         .test-list-item .no-search-results { padding:10px;color:var(--text-secondary);font-size:0.9em; }
+         .test-item-info { font-size: 0.9em; color: var(--text-primary); position: relative; padding-right: 50px; }
+         .test-item-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+         .test-item-details { font-size: 0.8em; color: var(--text-secondary); }
+         .test-item-actions { display: flex; justify-content: flex-start; gap: 8px; }
+         .test-item-actions button, .test-item-actions select { background-color: var(--main-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
+         .test-item-actions button:hover, .test-item-actions select:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
+         .test-item-actions select:disabled { opacity: 0.6; cursor: not-allowed; }
+        .test-item-controls { position: absolute; right: 5px; top: 0; display: flex; gap: 5px; }
+        .test-item-controls button { background: none; border: none; color: var(--delete-button-color); cursor: pointer; font-size: 1.1em; padding: 0 3px; line-height: 1; opacity: 0.7; transition: color 0.2s ease, opacity 0.2s ease; }
+        .test-item-controls button:hover { opacity: 1; color: var(--delete-button-hover-color); }
+        .test-item-edit-mode { display: flex; align-items: center; }
+        .test-item-edit-mode input[type="text"] { flex-grow: 1; padding: 2px 4px; margin-right: 5px; border: 1px solid var(--input-focus-border-color); background-color: var(--input-bg); color: var(--text-primary); border-radius: 3px; font-size: 0.95em; }
+        .test-item-edit-mode button { font-size: 0.9em; padding: 2px 5px; background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 3px; cursor: pointer; margin-left: 3px; }
+        .test-item-edit-mode button:hover { background-color: var(--button-hover-bg); }
+         /* Chat List */
+         .start-chat-button { display: flex; align-items: center; gap: 8px; background-color: var(--main-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; padding: 10px 15px; margin: 0 15px 10px 15px; font-size: 0.95em; font-weight: 500; cursor: pointer; text-align: left; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; flex-shrink: 0; }
+         .start-chat-button:hover { background-color: var(--button-hover-bg); } .start-chat-button svg { fill: currentColor; width: 16px; height: 16px; }
+         .start-chat-button:disabled { opacity: 0.6; cursor: not-allowed; }
+         .chat-list { overflow-y: auto; padding: 0 15px; margin-bottom: 10px; flex-grow: 1; }
+         .chat-list::-webkit-scrollbar { width: 6px; } .chat-list::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px;} .chat-list::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+         .chat-list-item { padding: 8px 30px 8px 10px; margin-bottom: 4px; border-radius: 6px; font-size: 0.9em; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-secondary); transition: background-color 0.2s ease, color 0.2s ease; position: relative; }
+         .chat-list-item:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
+         .chat-list-item.active { background-color: var(--active-item-bg); color: var(--text-primary); font-weight: 500; }
+         .delete-chat-button { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; background: none; border: none; color: var(--delete-button-color); cursor: pointer; font-size: 1.3em; line-height: 1; padding: 0; display: none; opacity: 0.7; transition: color 0.2s ease, opacity 0.2s ease; }
+         .chat-list-item:hover .delete-chat-button { display: block; }
+         .delete-chat-button:hover { color: var(--delete-button-hover-color); opacity: 1; }
+         /* Sidebar Footer */
+         .sidebar-footer { border-top: 1px solid var(--border-color); padding: 10px 15px; transition: border-color 0.3s ease; flex-shrink: 0; }
+         .sidebar-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+         .text-size-controls span, .theme-toggle span { font-size: 0.85em; color: var(--text-secondary); }
+         .text-size-buttons button, .theme-toggle button { background: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; padding: 2px 8px; margin-left: 5px; cursor: pointer; font-size: 1.1em; line-height: 1; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+         .text-size-buttons button:hover, .theme-toggle button:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
+         .text-size-buttons button:disabled, .theme-toggle button:disabled { opacity: 0.6; cursor: not-allowed; }
+         .account-info { display: flex; align-items: center; gap: 10px; font-size: 0.9em; margin-top: 10px; }
+         .account-avatar { width: 30px; height: 30px; border-radius: 50%; background-color: #6c757d; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; }
+         .account-details { overflow: hidden; }
+         .account-email { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
+         .account-plan { font-size: 0.85em; color: var(--text-secondary); }
+         #auth-controls { margin-top: 15px; text-align: center; }
+         #auth-controls button { background-color: var(--button-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 15px; cursor: pointer; font-size: 0.9em; transition: background-color 0.2s ease; }
+         #auth-controls button:hover { background-color: var(--button-hover-bg); }
+         #logout-btn { display: none; }
+
+        /* Chat Area Elements */
+        .greeting { font-size: 1.8em; font-weight: 600; margin-bottom: 40px; color: var(--text-primary); } .greeting .asterisk { color: var(--accent-color); font-size: 1.2em; margin-right: 5px; display: inline-block; vertical-align: middle; }
+        .message { padding: 12px 18px; border-radius: 18px; max-width: 80%; word-wrap: break-word; line-height: 1.6; margin-bottom: 15px; font-size: var(--message-font-size); transition: background-color 0.3s ease, color 0.3s ease; }
+        .user-message { background-color: var(--user-message-bg); color: var(--user-message-text); align-self: flex-end; border-bottom-right-radius: 5px; }
+        .ai-message { background-color: var(--ai-message-bg); color: var(--ai-message-text); align-self: flex-start; border-bottom-left-radius: 5px; }
+        .ai-message strong { font-weight: 600; } .ai-message em { font-style: italic; }
+        .ai-message pre { background-color: var(--code-bg); color: var(--text-primary); padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 0.9em; transition: background-color 0.3s ease, color 0.3s ease; }
+        .ai-message code { font-family: monospace; background-color: var(--code-bg); color: var(--text-primary); padding: 2px 4px; border-radius: 3px; transition: background-color 0.3s ease, color 0.3s ease;}
+        .ai-message pre code { background-color: transparent; padding: 0; }
+        .ai-message.thinking { background-color: transparent; color: var(--text-secondary); font-style: italic; }
+        .error-message { background-color: var(--error-bg); color: var(--error-text); border: 1px solid var(--error-border); align-self: flex-start; transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;}
+        .info-message { text-align: center; color: var(--text-secondary); padding: 50px 20px; font-style: italic; }
+        .message mjx-container { color: inherit !important; font-size: inherit !important; }
+        /* Embedded Images & Videos */
+        .message img.chat-image, .message img.uploaded-image { max-width: 100%; height: auto; border-radius: 8px; margin-top: 8px; cursor: pointer; display: block; }
+        .message img.uploaded-image { border: 1px solid var(--border-color); margin-bottom: 5px; /* Space between uploaded img and text */ }
+        .message .youtube-embed-container { margin-top: 10px; }
+        .message iframe.chat-video { max-width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 8px; }
+        /* NEW: Audio display in chat */
+        .message .chat-audio-player { margin-top: 10px; width: 100%; max-width: 350px; }
+        .message .chat-audio-player audio { width: 100%; height: 40px; border-radius: 20px; /* Optional styling */ }
+
+        /* Input Area Elements */
+        .suggestions { display: none; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
+        .suggestion-chip { background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 16px; padding: 8px 15px; font-size: 0.9em; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease; }
+        .suggestion-chip:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
+        .input-box { display: flex; align-items: flex-end; background-color: var(--main-bg); border: 1px solid var(--input-border-color); border-radius: 12px; padding: 5px 5px 5px 15px; position: relative; transition: background-color 0.3s ease, border-color 0.3s ease; }
+        .input-box:focus-within { border-color: var(--input-focus-border-color); }
+        /* Input Buttons */
+        .input-buttons { display: flex; align-self: center; margin-right: 5px; gap: 3px; }
+        #image-upload-button, #audio-upload-button, #record-audio-button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.4em; padding: 0 4px; line-height: 1; transition: color 0.2s ease; }
+        #image-upload-button:hover, #audio-upload-button:hover, #record-audio-button:hover:not(.recording) { color: var(--text-primary); }
+        #image-upload-button:disabled, #audio-upload-button:disabled, #record-audio-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #record-audio-button.recording { color: var(--record-button-bg); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+
+        #user-input { flex-grow: 1; border: none; outline: none; padding: 10px 5px; font-size: 1rem; background-color: transparent; resize: none; min-height: 48px; max-height: 250px; line-height: 1.5; color: var(--text-primary); font-family: var(--font-family); }
+        #user-input::placeholder { color: var(--text-placeholder); }
+        .mcq-mode-control { display: flex; align-items: center; margin-left: 10px; padding-bottom: 8px; flex-shrink: 0; }
+        .mcq-mode-control input[type="checkbox"] { margin-right: 5px; accent-color: var(--accent-color); cursor: pointer;}
+        .mcq-mode-control label { font-size: 0.85em; color: var(--text-secondary); cursor: pointer; user-select: none;}
+        #send-button { background-color: var(--send-button-bg); color: var(--send-button-text); border: none; border-radius: 8px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; margin-left: 10px; transition: background-color 0.2s ease; padding: 0; flex-shrink: 0; }
+        #send-button:hover:not(:disabled) { background-color: var(--send-button-hover-bg); }
+        #send-button:disabled { background-color: #cccccc; cursor: not-allowed; opacity: 0.6; }
+        #send-button svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* Media Previews */
+        #media-preview-container { margin-bottom: 10px; padding: 8px; background-color: var(--preview-bg); border: 1px solid var(--preview-border); border-radius: 8px; display: flex; align-items: center; gap: 10px; display: none; /* Initially hidden */ }
+        #media-preview-container img#preview-image { max-height: 50px; max-width: 80px; height: auto; width: auto; border-radius: 4px; object-fit: cover; display: none; /* Hidden by default */ }
+        #media-preview-container div#preview-audio-container { display: flex; align-items: center; gap: 8px; display: none; /* Hidden by default */ }
+        #media-preview-container audio#preview-audio { height: 30px; max-width: 200px; }
+        #media-preview-info { font-size: 0.85em; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1; }
+        #remove-media-button { background: none; border: none; color: var(--remove-btn-color); cursor: pointer; font-size: 1.4em; line-height: 1; padding: 0 5px; transition: color 0.2s ease; margin-left: auto; /* Push to the right */ }
+        #remove-media-button:hover { color: var(--remove-btn-hover-color); }
+         /* Recording Status */
+         #recording-status { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 5px; display: none; text-align: center; }
+         #recording-status.visible { display: block; }
+
+        .thinking::after { content: ' .'; animation: dots 1s steps(3, end) infinite; display: inline-block; }
+        @keyframes dots { 0%, 20% { content: ' .'; } 40% { content: ' ..'; } 60%, 100% { content: ' ...'; } }
+         .start-test-button { background-color: var(--accent-color); color: var(--send-button-text); border: none; border-radius: 6px; padding: 8px 15px; margin-top: 10px; cursor: pointer; font-weight: 500; display: inline-block; transition: background-color 0.2s ease; }
+         .start-test-button:hover { background-color: var(--send-button-hover-bg); }
+
+        /* Mock Test & Review View Styles */
+        /* ... (These remain the same) ... */
+        .mock-test-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--main-bg); z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; transition: background-color 0.3s ease; }
+        .mock-test-view.active { display: flex; }
+        .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
+        .test-header h2 { margin: 0; font-size: 1.3em; color: var(--text-primary); }
+        .test-info { display: flex; align-items: center; }
+        .test-info span { margin-left: 15px; font-size: 0.95em; color: var(--text-secondary); }
+        #test-language-toggle, #review-language-toggle { margin-left: 15px; padding: 3px 8px; font-size: 0.8em; cursor: pointer; background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; transition: background-color 0.2s ease, color 0.2s ease; }
+        #test-language-toggle:hover, #review-language-toggle:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
+        .test-content { flex-grow: 1; overflow-y: auto; padding: 10px 20px; }
+        .test-question-container { margin-bottom: 25px; }
+        .test-question-number { font-weight: bold; margin-bottom: 8px; color: var(--text-secondary); }
+        .test-question { font-size: 1.1em; line-height: 1.5; margin-bottom: 15px; color: var(--text-primary); }
+        .test-options label { display: block; margin-bottom: 12px; background-color: var(--button-bg); padding: 12px 15px; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease; color: var(--text-primary); }
+        .test-options label:hover { background-color: var(--button-hover-bg); }
+        .test-options input[type="radio"] { margin-right: 10px; accent-color: var(--accent-color); cursor: pointer;}
+        .test-navigation { display: flex; justify-content: space-between; padding-top: 15px; border-top: 1px solid var(--border-color); margin-top: auto; flex-shrink: 0; }
+        .test-navigation button { background-color: var(--button-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 10px 20px; cursor: pointer; font-size: 0.95em; transition: background-color 0.2s ease; }
+        .test-navigation button:hover:not(:disabled) { background-color: var(--button-hover-bg); }
+        .test-navigation button#submit-test-btn { background-color: var(--accent-color); color: var(--send-button-text); border-color: var(--accent-color); }
+        .test-navigation button#submit-test-btn:hover:not(:disabled) { background-color: var(--send-button-hover-bg); }
+        .test-navigation button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .review-view { padding: 20px; box-sizing: border-box; background-color: var(--main-bg); }
+        .review-header { margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .review-header h2 { margin: 0 0 10px 0; font-size: 1.3em; color: var(--text-primary); }
+        .review-summary { display: inline; }
+        .review-summary span { margin-right: 20px; font-size: 1em; color: var(--text-primary); }
+        .review-summary .score-correct { color: #28a745; font-weight: bold;} .review-summary .score-incorrect { color: #dc3545; font-weight: bold;} .review-summary .score-skipped { color: #fd7e14; font-weight: bold;}
+        .review-filters { margin-top: 10px; margin-bottom: 15px; }
+        .review-filters button { background-color: var(--button-bg); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 6px; padding: 5px 12px; margin-right: 8px; cursor: pointer; font-size: 0.9em; transition: background-color 0.2s ease, border-color 0.2s ease; }
+        .review-filters button:hover { background-color: var(--button-hover-bg); }
+        .review-filters button.active-filter { background-color: var(--accent-color); color: var(--send-button-text); border-color: var(--accent-color);}
+        .review-content { flex-grow: 1; overflow-y: auto; padding-right: 10px; }
+        .review-item { margin-bottom: 15px; padding: 15px; border: 1px solid var(--border-color); border-radius: 6px; background-color: var(--button-bg); transition: background-color 0.3s ease, border-color 0.3s ease; }
+        .review-item.hidden-by-filter { display: none; }
+        .review-item-qnum { font-weight: bold; margin-bottom: 8px; color: var(--text-secondary); }
+        .review-item-question { margin-bottom: 10px; line-height: 1.5; color: var(--text-primary); }
+        .review-item-details span { display: block; margin-bottom: 5px; font-size: 0.95em; color: var(--text-primary); }
+        .review-item-details .correct-answer { color: #28a745; font-weight: bold; }
+        .review-item-details .user-answer-correct { color: #28a745; } .review-item-details .user-answer-incorrect { color: #dc3545; text-decoration: line-through; } .review-item-details .user-answer-skipped { color: #fd7e14; font-style: italic; }
+        .review-item-explanation { margin-top: 8px; font-size: 0.9em; color: var(--text-secondary); border-left: 3px solid var(--border-color); padding-left: 8px; line-height: 1.4; }
+        .review-footer { text-align: center; padding-top: 20px; border-top: 1px solid var(--border-color); margin-top: auto; flex-shrink: 0; display: flex; justify-content: center; gap: 15px; }
+        #exit-review-btn, #save-review-btn { background-color: var(--accent-color); color: var(--send-button-text); border: none; border-radius: 6px; padding: 10px 25px; cursor: pointer; font-size: 1em; transition: background-color 0.2s ease; display: none; }
+        #exit-review-btn:hover, #save-review-btn:hover:not(:disabled) { background-color: var(--send-button-hover-bg); }
+        #save-review-btn { background-color: var(--button-bg); color: var(--text-primary); border: 1px solid var(--border-color); }
+        #save-review-btn:hover:not(:disabled) { background-color: var(--button-hover-bg); }
+        #save-review-btn:disabled { opacity: 0.6; cursor: not-allowed; background-color: #cccccc; border-color: #aaaaaa; }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            :root { --sidebar-width: 200px; }
+            .sidebar { padding: 10px 0; }
+            .main-container { }
+            .chat-area, .input-container { width: 95%; padding-left: 2.5%; padding-right: 2.5%; max-width: none; }
+            .chat-area { padding-top: 15px; padding-bottom: 10px; }
+            .input-container { padding-top: 10px; padding-bottom: 10px; }
+            .message { max-width: 90%; font-size: calc(var(--message-font-size) * 0.95); }
+            /* Input buttons responsive */
+            #image-upload-button, #audio-upload-button, #record-audio-button { font-size: 1.3em; padding: 0 3px; }
+             /* Media Preview responsive */
+            #media-preview-container { padding: 6px; gap: 8px; }
+            #media-preview-container img#preview-image { max-height: 40px; }
+            #media-preview-container audio#preview-audio { max-width: 150px; height: 28px; }
+            #media-preview-info { font-size: 0.8em; }
+            #remove-media-button { font-size: 1.3em; }
+            .input-box { padding: 5px 5px 5px 10px; }
+             #user-input { min-height: 40px; font-size: 0.95rem; }
+             #send-button { width: 32px; height: 32px; }
+             .mcq-mode-control label { font-size: 0.8em; }
+             /* Test/Review Mobile Styles */
+            .mock-test-view, .review-view { padding: 10px; }
+            .test-header, .review-header { margin-bottom: 15px; padding-bottom: 8px; flex-direction: column; align-items: flex-start; }
+            .test-header h2, .review-header h2 { font-size: 1.1em; margin-bottom: 5px;}
+            .test-info, .review-summary { margin-bottom: 5px; }
+            .test-info span, .review-summary span { margin-left: 0; margin-right: 10px; font-size: 0.9em; display: inline-block; margin-bottom: 3px;}
+            #test-language-toggle, #review-language-toggle { margin-left: 0; margin-top: 5px; font-size: 0.75em;}
+            .test-content, .review-content { padding: 5px; }
+            .test-question, .review-item-question { font-size: 1em; }
+            .test-options label, .review-item { padding: 10px; font-size: 0.95em;}
+            .review-filters { margin-top: 5px; }
+            .review-filters button { padding: 4px 8px; font-size: 0.85em; margin-right: 5px;}
+            .test-navigation, .review-footer { padding-top: 10px; }
+            .test-navigation button, #exit-review-btn, #save-review-btn { padding: 8px 15px; font-size: 0.9em; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container" id="app-container">
+        <div class="sidebar">
+             <!-- Sidebar content remains the same -->
+             <div class="sidebar-header">Gemini Chat</div>
+             <div id="all-tests-section">
+                 <div class="sidebar-section-title">All Tests</div>
+                 <input type="search" id="test-search-input" placeholder="Search tests..." disabled>
+                 <div class="all-tests-list" id="all-tests-list">
+                      <div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Login to see saved tests.</div>
+                 </div>
+             </div>
+             <div class="sidebar-section">
+                 <button class="start-chat-button" id="start-chat" disabled> <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"></path></svg>
+                      Start new chat
+                 </button>
+                 <div class="sidebar-section-title">Chats</div>
+                 <div class="chat-list" id="chat-list">
+                      <div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Please log in to see chats.</div>
+                 </div>
+             </div>
+             <div class="sidebar-footer">
+                  <div class="sidebar-controls">
+                      <div class="text-size-controls">
+                          <span>Text Size</span>
+                          <div class="text-size-buttons"> <button id="decrease-text-size" title="Decrease text size" disabled>-</button> <button id="increase-text-size" title="Increase text size" disabled>+</button> </div>
+                      </div>
+                      <div class="theme-toggle"> <button id="theme-toggle-button" title="Toggle Theme" disabled>☀️</button> </div>
+                  </div>
+                   <div id="auth-controls"> <button id="login-google-btn">Login with Google</button> <button id="logout-btn" style="display: none;">Logout</button> </div>
+                   <div class="account-info">
+                       <div class="account-avatar" id="account-avatar">?</div>
+                       <div class="account-details"> <div class="account-email" id="account-email">Not logged in</div> <div class="account-plan" id="account-plan"></div> </div>
+                   </div>
+             </div>
+        </div>
+
+        <div class="main-container">
+            <div class="main-content active" id="main-content-chat">
+                 <div class="chat-area" id="chat-area">
+                     <!-- Chat messages will be loaded here -->
+                 </div>
+                 <div class="input-container" id="input-container">
+                     <div class="suggestions" id="suggestions">
+                          <button class="suggestion-chip" data-prompt="Summarize this audio">Summarize this audio</button>
+                          <button class="suggestion-chip" data-prompt="Transcribe this audio">Transcribe this audio</button>
+                          <button class="suggestion-chip" data-prompt="Describe this image">Describe this image</button>
+                     </div>
+                    <!-- Media Preview Container (Unified for Image/Audio) -->
+                    <div id="media-preview-container">
+                        <!-- Image Preview -->
+                        <img id="preview-image" src="#" alt="Image preview" />
+                        <!-- Audio Preview -->
+                        <div id="preview-audio-container">
+                           <audio id="preview-audio" controls></audio>
+                        </div>
+                        <!-- Common Info & Remove Button -->
+                        <span id="media-preview-info">filename.ext</span>
+                        <button id="remove-media-button" title="Remove media">&times;</button>
+                    </div>
+                    <!-- Recording Status -->
+                    <div id="recording-status">Recording... <span>0s</span></div>
+
+                    <div class="input-box">
+                         <!-- Hidden File Inputs -->
+                         <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
+                         <!-- NEW: Audio file input -->
+                         <input type="file" id="audio-upload-input" accept="audio/wav, audio/mp3, audio/aac, audio/ogg, audio/flac, audio/aiff" style="display: none;">
+
+                         <!-- Buttons -->
+                         <div class="input-buttons">
+                             <button id="image-upload-button" title="Upload image (Max 4MB)" disabled>📎</button>
+                             <!-- NEW: Audio upload button -->
+                             <button id="audio-upload-button" title="Upload audio file (Max 10MB)" disabled>🎵</button>
+                             <!-- NEW: Record audio button -->
+                             <button id="record-audio-button" title="Record audio" disabled>🎙️</button>
+                         </div>
+
+                         <textarea id="user-input" placeholder="Enter prompt, paste URL, or attach media" rows="1"></textarea>
+                         <div class="mcq-mode-control"> <input type="checkbox" id="mcq-mode-checkbox" title="Check to generate MCQs based on your prompt"> <label for="mcq-mode-checkbox">MCQs?</label> </div>
+                         <button id="send-button" title="Send message" disabled> <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                        </button>
+                    </div>
+                 </div>
+            </div>
+            <!-- Review View -->
+            <div class="review-view" id="review-view">
+                 <div class="review-header">
+                     <h2 id="review-title">Test Review</h2>
+                     <div> <div class="review-summary" id="review-summary"></div> <button id="review-language-toggle" style="margin-left: 15px; padding: 3px 8px; font-size: 0.8em; vertical-align: middle;">தமிழ்</button> </div>
+                     <div class="review-filters" id="review-filters" style="display: none;"> <button data-filter="all" class="active-filter">All</button> <button data-filter="incorrect">Incorrect</button> <button data-filter="skipped">Skipped</button> </div>
+                 </div>
+                 <div class="review-content" id="review-content"></div>
+                 <div class="review-footer"> <button id="save-review-btn">Save Review</button> <button id="exit-review-btn">Back</button> </div>
+              </div>
+        </div>
+    </div>
+    <!-- Mock Test View -->
+    <div class="mock-test-view" id="mock-test-view">
+         <div class="test-header">
+            <h2 id="test-title">Mock Test</h2>
+            <div class="test-info"> <span id="question-counter">Q: 1 / N</span> <span id="test-timer">Time: 00:00</span> <button id="test-language-toggle" style="margin-left: 15px; padding: 3px 8px; font-size: 0.8em;">தமிழ்</button> </div>
+         </div>
+         <div class="test-content">
+            <div class="test-question-container"> <div class="test-question-number" id="test-question-number"></div> <div class="test-question" id="test-question"></div> <div class="test-options" id="test-options"></div> </div>
+         </div>
+         <div class="test-navigation"> <button id="prev-question-btn" disabled>Previous</button> <button id="next-question-btn">Next</button> <button id="submit-test-btn">Submit Test</button> </div>
+    </div>
+
+
+    <script>
+        // --- Firebase Config ---
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        // !!! பாதுகாப்பு எச்சரிக்கை / SECURITY WARNING !!!
+        // Replace with YOUR Firebase config and consider security measures.
+        // உங்கள் Firebase config ஐ மாற்றவும் மற்றும் பாதுகாப்பு நடவடிக்கைகளைக் கவனிக்கவும்.
+        // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        const firebaseConfig = {
+          apiKey: "AIzaSyDgw604fe5jnNu4kTOv1cQ-3n7PL8gcN58", // <- REPLACE WITH YOUR KEY
+          authDomain: "krish-c5db8.firebaseapp.com",
+          projectId: "krish-c5db8",
+          storageBucket: "krish-c5db8.appspot.com",
+          messagingSenderId: "217175257890",
+          appId: "1:217175257890:web:209f0f290eabab6b1fab7b",
+          measurementId: "G-97SHYGL2J4"
+        };
+
+        // --- Initialize Firebase ---
+        firebase.initializeApp(firebaseConfig);
+        const fbAuth = firebase.auth();
+        const db = firebase.firestore();
+        // const storage = firebase.storage();
+
+        // --- DOM Elements ---
+        // Existing Elements...
+        const appContainer = document.getElementById('app-container');
+        const chatArea = document.getElementById('chat-area');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const suggestionsContainer = document.getElementById('suggestions');
+        const startChatButton = document.getElementById('start-chat');
+        const chatListContainer = document.getElementById('chat-list');
+        const allTestsSection = document.getElementById('all-tests-section');
+        const testSearchInput = document.getElementById('test-search-input');
+        const allTestsListContainer = document.getElementById('all-tests-list');
+        const accountEmail = document.getElementById('account-email');
+        const accountAvatar = document.getElementById('account-avatar');
+        const accountPlan = document.getElementById('account-plan');
+        const decreaseTextBtn = document.getElementById('decrease-text-size');
+        const increaseTextBtn = document.getElementById('increase-text-size');
+        const themeToggleButton = document.getElementById('theme-toggle-button');
+        const mainContainer = document.querySelector('.main-container');
+        const chatView = document.getElementById('main-content-chat');
+        const testView = document.getElementById('mock-test-view');
+        const reviewView = document.getElementById('review-view');
+        const inputContainer = document.getElementById('input-container');
+        const mcqModeCheckbox = document.getElementById('mcq-mode-checkbox');
+        const loginBtn = document.getElementById('login-google-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const testTitle = document.getElementById('test-title');
+        const questionCounter = document.getElementById('question-counter');
+        const testTimer = document.getElementById('test-timer');
+        const testQuestionNumber = document.getElementById('test-question-number');
+        const testQuestion = document.getElementById('test-question');
+        const testOptionsContainer = document.getElementById('test-options');
+        const prevQuestionBtn = document.getElementById('prev-question-btn');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const submitTestBtn = document.getElementById('submit-test-btn');
+        const testLanguageToggle = document.getElementById('test-language-toggle');
+        const reviewTitle = document.getElementById('review-title');
+        const reviewSummary = document.getElementById('review-summary');
+        const reviewContent = document.getElementById('review-content');
+        const exitReviewBtn = document.getElementById('exit-review-btn');
+        const reviewFilters = document.getElementById('review-filters');
+        const saveReviewBtn = document.getElementById('save-review-btn');
+        const reviewLanguageToggle = document.getElementById('review-language-toggle');
+        // Image Elements (Now part of Media)
+        const imageUploadButton = document.getElementById('image-upload-button');
+        const imageUploadInput = document.getElementById('image-upload-input');
+        // Media Preview Elements (Unified)
+        const mediaPreviewContainer = document.getElementById('media-preview-container');
+        const previewImage = document.getElementById('preview-image'); // Specific img tag
+        const previewAudioContainer = document.getElementById('preview-audio-container'); // Specific audio div
+        const previewAudio = document.getElementById('preview-audio'); // Specific audio tag
+        const mediaPreviewInfo = document.getElementById('media-preview-info');
+        const removeMediaButton = document.getElementById('remove-media-button');
+        // NEW: Audio Elements
+        const audioUploadButton = document.getElementById('audio-upload-button');
+        const audioUploadInput = document.getElementById('audio-upload-input');
+        const recordAudioButton = document.getElementById('record-audio-button');
+        const recordingStatus = document.getElementById('recording-status');
+        const recordingTimerSpan = recordingStatus.querySelector('span');
+
+
+        // --- Config & Constants ---
+        const MODEL_NAME = "gemini-1.5-flash-latest"; // Use flash for potentially faster response
+        const API_URL_BASE = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=`;
+        const STORAGE_KEY_API_KEY = 'geminiApiKey_insecureDemo';
+        const NEW_CHAT_TITLE = "(New Chat)";
+        const TEXT_SIZE_STEP = 0.1;
+        const MIN_TEXT_SIZE_MULTIPLIER = 0.7;
+        const MAX_TEXT_SIZE_MULTIPLIER = 1.5;
+        const LIGHT_THEME_ICON = '☀️';
+        const DARK_THEME_ICON = '🌙';
+        const DELETE_ICON = '×';
+        const EDIT_TEST_ICON = '✏️';
+        const DELETE_TEST_ICON = '🗑️';
+        const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\S+)?/i;
+        const imageUrlRegex = /(?<!src=["'])(?<!href=["'])(https?:\/\/[^\s()<>]+?\.(?:jpg|jpeg|png|gif|webp|bmp))/gi;
+        const MAX_IMAGE_SIZE_MB = 4;
+        const MAX_AUDIO_SIZE_MB = 10; // Increased limit for audio inlineData (still check total request size)
+        const RECORDING_TIME_LIMIT_SECONDS = 300; // 5 minutes limit for recording
+
+        // --- State Variables ---
+        let API_KEY = '';
+        let currentUser = null;
+        let activeChatId = null;
+        let currentChatHistory = [];
+        let currentTextSizeMultiplier = 1.0;
+        let currentTheme = 'light';
+        let isTestMode = false;
+        let isReviewMode = false;
+        let currentTestMCQs = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = [];
+        let testStartTime = null;
+        let testTimerInterval = null;
+        let reviewResultsCache = null;
+        let cameFromAllTestsList = false;
+        let activeChatListener = null;
+        let chatListListener = null;
+        let testListListener = null;
+        let isDeletingChat = false;
+        let allSavedTestsData = [];
+        let currentTestLanguage = 'en';
+        let currentReviewLanguage = 'en';
+        // Unified media state
+        let selectedMediaData = { type: null, file: null, base64: null, mimeType: null, name: null }; // type: 'image' or 'audio'
+
+        // NEW: Audio Recording State
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+        let recordingStartTime = null;
+        let recordingTimerInterval = null;
+
+        // --- Initialization ---
+        initializeApp();
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', handleSendMessage);
+        userInput.addEventListener('input', autoGrowTextarea);
+        userInput.addEventListener('keydown', handleInputKeydown);
+        suggestionsContainer.addEventListener('click', handleSuggestionClick);
+        startChatButton.addEventListener('click', createNewChat);
+        chatListContainer.addEventListener('click', handleChatListClick);
+        allTestsListContainer.addEventListener('click', handleAllTestsListClick);
+        testSearchInput.addEventListener('input', filterTestsInSidebar);
+        decreaseTextBtn.addEventListener('click', () => adjustTextSize(-TEXT_SIZE_STEP));
+        increaseTextBtn.addEventListener('click', () => adjustTextSize(TEXT_SIZE_STEP));
+        themeToggleButton.addEventListener('click', toggleTheme);
+        prevQuestionBtn.addEventListener('click', () => handleTestNavigation('prev'));
+        nextQuestionBtn.addEventListener('click', () => handleTestNavigation('next'));
+        submitTestBtn.addEventListener('click', submitTest);
+        testLanguageToggle.addEventListener('click', toggleTestLanguage);
+        exitReviewBtn.addEventListener('click', exitReview);
+        chatArea.addEventListener('click', handleChatAreaClick);
+        reviewFilters.addEventListener('click', handleReviewFilterClick);
+        saveReviewBtn.addEventListener('click', saveTestReviewToCloud);
+        reviewLanguageToggle.addEventListener('click', toggleReviewLanguage);
+        loginBtn.addEventListener('click', signInWithGoogle);
+        logoutBtn.addEventListener('click', signOut);
+        // Media Listeners
+        imageUploadButton.addEventListener('click', () => imageUploadInput.click());
+        imageUploadInput.addEventListener('change', handleImageFileSelect);
+        audioUploadButton.addEventListener('click', () => audioUploadInput.click());
+        audioUploadInput.addEventListener('change', handleAudioFileSelect);
+        recordAudioButton.addEventListener('click', toggleRecording);
+        removeMediaButton.addEventListener('click', removeSelectedMedia);
+
+
+        // --- Initialization Functions ---
+        async function initializeApp() {
+            loadGeminiApiKey();
+            fbAuth.onAuthStateChanged(handleAuthStateChange);
+            switchView('chat');
+            userInput.focus();
+        }
+
+        function loadGeminiApiKey() {
+             console.warn("!!! SECURITY WARNING / பாதுகாப்பு எச்சரிக்கை !!! Using insecure API key storage. Use Cloud Functions in production.");
+             API_KEY = localStorage.getItem(STORAGE_KEY_API_KEY);
+             if(!API_KEY){
+                 API_KEY=prompt("--- INSECURE DEMO --- Please enter your Gemini API Key (will be stored insecurely).\n--- பாதுகாப்பற்ற டெமோ --- உங்கள் Gemini API விசையை உள்ளிடவும் (பாதுகாப்பற்ற முறையில் சேமிக்கப்படும்).");
+                 if(API_KEY){ localStorage.setItem(STORAGE_KEY_API_KEY, API_KEY); console.log("Saved insecure API Key."); }
+                 else { displayError("Gemini API Key is required.\nGemini API விசை தேவை."); setLoadingState(true, "API Key Missing"); }
+             } else { console.log("Loaded insecure API Key."); }
+             setLoadingState(!API_KEY);
+        }
+
+        // --- Authentication Functions ---
+        async function signInWithGoogle() {
+             const provider = new firebase.auth.GoogleAuthProvider();
+             try { setLoadingState(true, "Logging in..."); await fbAuth.signInWithPopup(provider); }
+             catch (error) { console.error("Google Sign-In Error:", error); displayError(`Login failed: ${error.message || 'Unknown error'}\nஉள்நுழைவு தோல்வியுற்றது: ${error.message || 'தெரியாத பிழை'}`); setLoadingState(false); }
+         }
+        async function signOut() {
+             try { setLoadingState(true, "Logging out..."); await fbAuth.signOut(); }
+             catch (error) { console.error("Sign Out Error:", error); displayError(`Logout failed: ${error.message || 'Unknown error'}\nவெளியேறுதல் தோல்வியுற்றது: ${error.message || 'தெரியாத பிழை'}`); setLoadingState(false); }
+         }
+
+        function handleAuthStateChange(user) {
+            if (activeChatListener) { activeChatListener(); activeChatListener = null; }
+            if (chatListListener) { chatListListener(); chatListListener = null; }
+            if (testListListener) { testListListener(); testListListener = null; }
+            chatArea.innerHTML = '';
+            chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Please log in...</div>';
+            allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Login to see tests.</div>';
+            allTestsSection.classList.remove('visible');
+            testSearchInput.value = ''; testSearchInput.disabled = true;
+            activeChatId = null; currentChatHistory = []; isDeletingChat = false; allSavedTestsData = [];
+            removeSelectedMedia(); // Clear any leftover media preview
+
+            if (user) {
+                currentUser = user; console.log("User logged in:", currentUser.uid);
+                loginBtn.style.display = 'none'; logoutBtn.style.display = 'inline-block';
+                accountEmail.textContent = currentUser.email || currentUser.displayName || `User`;
+                accountAvatar.textContent = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
+                accountPlan.textContent = "Firebase User";
+                startChatButton.disabled = false; decreaseTextBtn.disabled = false; increaseTextBtn.disabled = false; themeToggleButton.disabled = false; testSearchInput.disabled = false; userInput.disabled = false;
+                imageUploadButton.disabled = false; // Enable media buttons
+                audioUploadButton.disabled = false;
+                recordAudioButton.disabled = false;
+                sendButton.disabled = true; // Disabled until chat selected
+                mcqModeCheckbox.disabled = true; // Disabled until chat selected
+                userInput.placeholder = "Select or create a chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்";
+                inputContainer.style.display = 'block';
+                suggestionsContainer.style.display = 'flex';
+                allTestsSection.classList.add('visible');
+                loadUserSettings(currentUser.uid);
+                loadAndListenForChats(currentUser.uid);
+                loadAndListenForTests(currentUser.uid);
+                setLoadingState(false);
+            } else {
+                currentUser = null; console.log("User logged out");
+                loginBtn.style.display = 'inline-block'; logoutBtn.style.display = 'none';
+                accountEmail.textContent = "Not logged in"; accountAvatar.textContent = '?'; accountPlan.textContent = "";
+                startChatButton.disabled = true; decreaseTextBtn.disabled = true; increaseTextBtn.disabled = true; themeToggleButton.disabled = true; testSearchInput.disabled = true; userInput.disabled = true;
+                imageUploadButton.disabled = true; // Disable media buttons
+                audioUploadButton.disabled = true;
+                recordAudioButton.disabled = true;
+                sendButton.disabled = true;
+                mcqModeCheckbox.disabled = true;
+                userInput.placeholder = "Please log in / உள்நுழையவும்";
+                inputContainer.style.display = 'none';
+                suggestionsContainer.style.display = 'none';
+                allTestsSection.classList.remove('visible');
+                renderGreetingOrLoginPrompt();
+                currentTheme = 'light'; applyTheme();
+                currentTextSizeMultiplier = 1.0; applyTextSize();
+                setLoadingState(false);
+            }
+        }
+
+        function renderGreetingOrLoginPrompt() {
+             chatArea.innerHTML = '';
+             const greetingElement = document.createElement('div');
+             greetingElement.classList.add('greeting');
+             if (currentUser) {
+                 greetingElement.innerHTML = `<span class="asterisk">*</span>Good day, ${currentUser.displayName || 'User'}!`;
+                 chatArea.appendChild(greetingElement);
+                 if (!activeChatId) {
+                     displayMessage("Select a chat or start a new one.\nஒரு உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது புதிய ஒன்றைத் தொடங்கவும்.", 'ai');
+                 }
+             }
+             else {
+                 greetingElement.innerHTML = `<span class="asterisk">*</span>Welcome! / வருக!`;
+                 chatArea.appendChild(greetingElement);
+                 displayMessage("Please log in to start chatting.\nஉரையாடலைத் தொடங்க உள்நுழையவும்.", 'ai');
+             }
+             scrollToBottom(true);
+         }
+
+        // --- Settings (Theme/Text Size) ---
+        // No changes needed here, copy from previous version
+        async function loadUserSettings(userId) { const userDocRef = db.collection('users').doc(userId); try { const docSnap = await userDocRef.get(); if (docSnap.exists) { const settings = docSnap.data(); currentTheme = settings.theme || 'light'; currentTextSizeMultiplier = settings.textSizeMultiplier || 1.0; console.log("Loaded user settings:", settings); } else { console.log("No user settings found, using defaults."); currentTheme = 'light'; currentTextSizeMultiplier = 1.0; await saveUserSettings(); } } catch (error) { console.error("Error loading user settings:", error); currentTheme = 'light'; currentTextSizeMultiplier = 1.0; } applyTheme(); applyTextSize(); }
+        async function saveUserSettings() { if (!currentUser) return; const userDocRef = db.collection('users').doc(currentUser.uid); const settings = { theme: currentTheme, textSizeMultiplier: currentTextSizeMultiplier }; try { await userDocRef.set(settings, { merge: true }); console.log("User settings saved:", settings); } catch (error) { console.error("Error saving user settings:", error); } }
+        function applyTheme() { if(currentTheme==='dark'){ document.body.classList.add('dark-theme'); themeToggleButton.textContent=LIGHT_THEME_ICON; themeToggleButton.title="Switch to Light Theme"; } else { document.body.classList.remove('dark-theme'); themeToggleButton.textContent=DARK_THEME_ICON; themeToggleButton.title="Switch to Dark Theme"; } }
+        function toggleTheme() { if (!currentUser) return; currentTheme = (currentTheme === 'light') ? 'dark' : 'light'; applyTheme(); saveUserSettings(); }
+        function applyTextSize() { const newSize = `calc(var(--message-font-size-base) * ${currentTextSizeMultiplier})`; document.documentElement.style.setProperty('--message-font-size', newSize); decreaseTextBtn.disabled = !currentUser || currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER; increaseTextBtn.disabled = !currentUser || currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER; }
+        function adjustTextSize(change) { if (!currentUser) return; let newMultiplier = Math.max(MIN_TEXT_SIZE_MULTIPLIER, Math.min(MAX_TEXT_SIZE_MULTIPLIER, currentTextSizeMultiplier + change)); newMultiplier = Math.round(newMultiplier * 10) / 10; if (newMultiplier !== currentTextSizeMultiplier) { currentTextSizeMultiplier = newMultiplier; applyTextSize(); saveUserSettings(); } }
+
+
+        // --- Chat Storage & Loading (Firestore) ---
+        // No changes needed here, copy from previous version
+         function loadAndListenForChats(userId) {
+            if (chatListListener) { chatListListener(); chatListListener = null; }
+            const chatsRef = db.collection('chats').where('userId', '==', userId).orderBy('lastUpdated', 'desc');
+            console.log(`Listening for chats for user ${userId}`);
+            chatListListener = chatsRef.onSnapshot(snapshot => {
+                 if (isDeletingChat) { console.log("Skipping chat list update during delete."); return; }
+                const chats = []; snapshot.forEach(doc => { chats.push({ id: doc.id, ...doc.data() }); });
+                console.log("Received chat list snapshot:", chats.length, "chats");
+                renderSidebarChatList(chats);
+                let chatToLoad = null;
+                if (activeChatId && chats.some(c => c.id === activeChatId)) { chatToLoad = activeChatId; }
+                else if (chats.length > 0) { chatToLoad = chats[0].id; console.log("Active chat gone/none, selecting newest:", chatToLoad); }
+                else { activeChatId = null; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); setLoadingState(false); sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; userInput.placeholder = "Create a new chat / புதிய உரையாடலை உருவாக்கவும்"; }
+                 if (chatToLoad && chatToLoad !== activeChatId) { switchChat(chatToLoad); }
+                 else if (activeChatId) { highlightActiveChatInSidebar(); setLoadingState(false); const enable = !API_KEY; sendButton.disabled = enable; mcqModeCheckbox.disabled = enable; imageUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable;}
+                 else { setLoadingState(false); }
+            }, error => { console.error("Error listening for chats:", error); displayError("Could not load chat list.\nஉரையாடல் பட்டியலை ஏற்ற முடியவில்லை."); chatListContainer.innerHTML = '<div style="padding:10px;color:var(--error-text);">Error loading chats.</div>'; setLoadingState(false); });
+        }
+        function renderSidebarChatList(chats) {
+            chatListContainer.innerHTML = ''; if (!currentUser) { chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Please log in.</div>'; return; }
+            if (chats.length === 0) { chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No chats yet. Start one!</div>'; }
+            else { chats.forEach(chatData => { const itemElement = document.createElement('div'); itemElement.classList.add('chat-list-item'); let title = chatData.title; if (typeof title !== 'string' || !title.trim()) { title = '(Untitled Chat)'; } title = title.trim(); itemElement.textContent = title; itemElement.dataset.id = chatData.id; itemElement.title = title; const deleteBtn = document.createElement('button'); deleteBtn.classList.add('delete-chat-button'); deleteBtn.innerHTML = DELETE_ICON; deleteBtn.title = "Delete chat"; deleteBtn.dataset.id = chatData.id; itemElement.appendChild(deleteBtn); chatListContainer.appendChild(itemElement); }); }
+            highlightActiveChatInSidebar();
+        }
+        function highlightActiveChatInSidebar() { const items = chatListContainer.querySelectorAll('.chat-list-item'); items.forEach(item => { item.classList.toggle('active', item.dataset.id === activeChatId); }); }
+
+
+        // --- Media Handling Functions (Unified Image & Audio) ---
+
+        /**
+         * Handles selection of an image file.
+         * படக் கோப்புத் தேர்வைக் கையாளுகிறது.
+         */
+        function handleImageFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                removeSelectedMedia();
+                return;
+            }
+
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
+            if (!allowedTypes.includes(file.type)) {
+                alert(`Invalid file type. Please select an image.\nதவறான கோப்பு வகை. ஒரு படத்தைத் தேர்ந்தெடுக்கவும்.`);
+                imageUploadInput.value = ''; // Reset input
+                removeSelectedMedia();
+                return;
+            }
+
+            const fileSizeMB = file.size / 1024 / 1024;
+            if (fileSizeMB > MAX_IMAGE_SIZE_MB) {
+                alert(`Image too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_IMAGE_SIZE_MB}MB.\nபடம் மிகவும் பெரியது (${fileSizeMB.toFixed(1)}MB). அதிகபட்சம் ${MAX_IMAGE_SIZE_MB}MB.`);
+                imageUploadInput.value = ''; // Reset input
+                removeSelectedMedia();
+                return;
+            }
+
+            // Remove any existing audio before processing image
+            if (selectedMediaData.type === 'audio') {
+                removeSelectedMedia();
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                selectedMediaData = {
+                    type: 'image',
+                    file: file,
+                    base64: e.target.result,
+                    mimeType: file.type,
+                    name: file.name
+                };
+                console.log("Image selected:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
+                displayMediaPreview();
+            }
+            reader.onerror = (error) => {
+                console.error("Error reading file:", error);
+                alert("Error reading image file.\nபடக் கோப்பைப் படிப்பதில் பிழை.");
+                removeSelectedMedia();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Handles selection of an audio file.
+         * ஒலிக் கோப்புத் தேர்வைக் கையாளுகிறது.
+         */
+        function handleAudioFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) {
+                removeSelectedMedia();
+                return;
+            }
+
+            // Gemini supported audio formats MIME types
+            const allowedTypes = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'];
+             // Add audio/mpeg for mp3
+            if (!allowedTypes.includes(file.type)) {
+                alert(`Unsupported audio file type: ${file.type}. Please select WAV, MP3, AIFF, AAC, OGG, or FLAC.\nஆதரிக்கப்படாத ஒலி கோப்பு வகை: ${file.type}. WAV, MP3, AIFF, AAC, OGG, அல்லது FLAC ஐத் தேர்ந்தெடுக்கவும்.`);
+                audioUploadInput.value = ''; // Reset input
+                removeSelectedMedia();
+                return;
+            }
+
+            const fileSizeMB = file.size / 1024 / 1024;
+            if (fileSizeMB > MAX_AUDIO_SIZE_MB) {
+                alert(`Audio file too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB for upload.\nஒலி கோப்பு மிகவும் பெரியது (${fileSizeMB.toFixed(1)}MB). பதிவேற்றத்திற்கு அதிகபட்சம் ${MAX_AUDIO_SIZE_MB}MB.`);
+                audioUploadInput.value = ''; // Reset input
+                removeSelectedMedia();
+                return;
+            }
+
+            // Remove any existing image before processing audio
+            if (selectedMediaData.type === 'image') {
+                removeSelectedMedia();
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                selectedMediaData = {
+                    type: 'audio',
+                    file: file, // Keep file for potential future use (e.g., File API)
+                    base64: e.target.result, // base64 includes the data URL prefix
+                    mimeType: file.type,
+                    name: file.name
+                };
+                console.log("Audio selected:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
+                displayMediaPreview();
+            }
+            reader.onerror = (error) => {
+                console.error("Error reading audio file:", error);
+                alert("Error reading audio file.\nஒலி கோப்பைப் படிப்பதில் பிழை.");
+                removeSelectedMedia();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        /**
+         * Displays the preview for the selected media (image or audio).
+         * தேர்ந்தெடுக்கப்பட்ட மீடியாவுக்கான (படம் அல்லது ஒலி) மாதிரிக்காட்சியைக் காட்டுகிறது.
+         */
+        function displayMediaPreview() {
+            if (!selectedMediaData.type) {
+                mediaPreviewContainer.style.display = 'none';
+                return;
+            }
+
+            // Hide both previews initially
+            previewImage.style.display = 'none';
+            previewAudioContainer.style.display = 'none';
+
+            mediaPreviewInfo.textContent = selectedMediaData.name || 'Unknown file';
+
+            if (selectedMediaData.type === 'image' && selectedMediaData.base64) {
+                previewImage.src = selectedMediaData.base64;
+                previewImage.style.display = 'block'; // Show image preview
+            } else if (selectedMediaData.type === 'audio' && selectedMediaData.base64) {
+                previewAudio.src = selectedMediaData.base64;
+                previewAudio.load(); // Ensure controls are updated
+                previewAudioContainer.style.display = 'flex'; // Show audio preview container
+                // Note: Browser might not be able to play all types listed, but we need the data for the API
+            }
+
+            mediaPreviewContainer.style.display = 'flex'; // Show the main preview container
+        }
+
+        /**
+         * Removes the currently selected media (image or audio).
+         * தற்போது தேர்ந்தெடுக்கப்பட்ட மீடியாவை (படம் அல்லது ஒலி) நீக்குகிறது.
+         */
+        function removeSelectedMedia() {
+            selectedMediaData = { type: null, file: null, base64: null, mimeType: null, name: null };
+            mediaPreviewContainer.style.display = 'none';
+            previewImage.src = '#';
+            previewAudio.src = '';
+            previewAudio.removeAttribute('src'); // Make sure it's fully cleared
+            previewImage.style.display = 'none';
+            previewAudioContainer.style.display = 'none';
+            mediaPreviewInfo.textContent = '';
+            imageUploadInput.value = ''; // Reset file inputs
+            audioUploadInput.value = '';
+            console.log("Selected media removed.");
+        }
+
+        // --- Audio Recording Functions ---
+
+        /**
+         * Toggles audio recording on or off.
+         * ஒலிப் பதிவை ஆன் அல்லது ஆஃப் செய்கிறது.
+         */
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        }
+
+        /**
+         * Starts audio recording using the MediaRecorder API.
+         * MediaRecorder API ஐப் பயன்படுத்தி ஒலிப் பதிவைத் தொடங்குகிறது.
+         */
+        async function startRecording() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                alert("Audio recording is not supported by your browser.\nஉங்கள் உலாவியால் ஒலிப் பதிவு ஆதரிக்கப்படவில்லை.");
+                return;
+            }
+            if (selectedMediaData.type) {
+                alert("Please remove the selected image or audio file before recording.\nபதிவு செய்வதற்கு முன், தேர்ந்தெடுக்கப்பட்ட படம் அல்லது ஒலி கோப்பை அகற்றவும்.");
+                return;
+            }
+
+            try {
+                // Request microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                recordAudioButton.disabled = true; // Disable while initializing
+
+                // Prefer 'audio/ogg;codecs=opus' or 'audio/webm;codecs=opus' if available, fallback
+                const options = { mimeType: 'audio/ogg;codecs=opus' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    console.log(`${options.mimeType} not supported, trying audio/webm`);
+                    options.mimeType = 'audio/webm;codecs=opus';
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                         console.log(`${options.mimeType} not supported, trying default`);
+                         delete options.mimeType; // Use browser default
+                    }
+                }
+
+                mediaRecorder = new MediaRecorder(stream, options);
+                const actualMimeType = mediaRecorder.mimeType; // Get the actual mimeType being used
+                console.log("Using MIME type for recording:", actualMimeType);
+
+                audioChunks = []; // Reset chunks
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    // Stop all tracks in the stream to turn off the mic indicator
+                    stream.getTracks().forEach(track => track.stop());
+
+                    isRecording = false;
+                    recordAudioButton.classList.remove('recording');
+                    recordAudioButton.textContent = '🎙️'; // Reset icon
+                    recordAudioButton.title = 'Record audio';
+                    recordingStatus.classList.remove('visible');
+                    if (recordingTimerInterval) {
+                        clearInterval(recordingTimerInterval);
+                        recordingTimerInterval = null;
+                    }
+                    setLoadingState(false); // Re-enable buttons
+
+                    if (audioChunks.length === 0) {
+                        console.warn("No audio data recorded.");
+                        return;
+                    }
+
+                    // Combine chunks into a single Blob
+                    const audioBlob = new Blob(audioChunks, { type: actualMimeType });
+                    audioChunks = []; // Clear for next recording
+
+                    const fileSizeMB = audioBlob.size / 1024 / 1024;
+                    console.log(`Recording stopped. Blob size: ${fileSizeMB.toFixed(3)} MB, Type: ${actualMimeType}`);
+
+                    if (fileSizeMB > MAX_AUDIO_SIZE_MB) {
+                        alert(`Recorded audio too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.\nபதிவுசெய்யப்பட்ட ஒலி மிகவும் பெரியது (${fileSizeMB.toFixed(1)}MB). அதிகபட்சம் ${MAX_AUDIO_SIZE_MB}MB.`);
+                        removeSelectedMedia(); // Clear any state just in case
+                        return;
+                    }
+
+                    // Convert Blob to base64 Data URL for API and preview
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        selectedMediaData = {
+                            type: 'audio',
+                            file: null, // We have the Blob, maybe store it later?
+                            base64: reader.result, // This is the Data URL
+                            mimeType: actualMimeType, // Use the actual mimeType
+                            name: `recording-${new Date().toISOString()}.ogg` // Use a default name, adjust extension based on actualMimeType if needed
+                        };
+                        displayMediaPreview();
+                    };
+                    reader.onerror = (error) => {
+                         console.error("Error converting recorded audio blob to base64:", error);
+                         alert("Error processing recorded audio.\nபதிவுசெய்யப்பட்ட ஒலியைச் செயலாக்குவதில் பிழை.");
+                    };
+                    reader.readAsDataURL(audioBlob);
+                };
+
+                mediaRecorder.onerror = (event) => {
+                    console.error("MediaRecorder error:", event.error);
+                    alert(`Recording error: ${event.error.name}\nபதிவு செய்வதில் பிழை: ${event.error.name}`);
+                    stopRecording(); // Try to cleanup
+                };
+
+                // Start recording
+                mediaRecorder.start();
+                isRecording = true;
+                recordingStartTime = Date.now();
+                recordAudioButton.classList.add('recording');
+                recordAudioButton.textContent = '🛑'; // Change to stop icon
+                recordAudioButton.title = 'Stop recording';
+                recordingStatus.classList.add('visible');
+                recordingTimerSpan.textContent = '0s';
+                setLoadingState(true, "Recording..."); // Disable other inputs
+
+                // Start timer display and check limit
+                recordingTimerInterval = setInterval(() => {
+                    const elapsedSeconds = Math.floor((Date.now() - recordingStartTime) / 1000);
+                    recordingTimerSpan.textContent = `${elapsedSeconds}s`;
+                    if (elapsedSeconds >= RECORDING_TIME_LIMIT_SECONDS) {
+                        console.log("Recording time limit reached.");
+                        stopRecording();
+                        alert(`Recording stopped automatically after ${RECORDING_TIME_LIMIT_SECONDS} seconds.`);
+                    }
+                }, 1000);
+
+                console.log("Recording started...");
+                recordAudioButton.disabled = false; // Re-enable the stop button quickly
+
+            } catch (error) {
+                console.error("Error starting recording:", error);
+                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                    alert("Microphone access denied. Please allow microphone access in your browser settings.\nமைக்ரோஃபோன் அணுகல் மறுக்கப்பட்டது. உங்கள் உலாவி அமைப்புகளில் மைக்ரோஃபோன் அணுகலை அனுமதிக்கவும்.");
+                } else {
+                    alert(`Could not start recording: ${error.name}\nபதிவைத் தொடங்க முடியவில்லை: ${error.name}`);
+                }
+                // Ensure cleanup if error occurs
+                isRecording = false;
+                recordAudioButton.classList.remove('recording');
+                recordAudioButton.textContent = '🎙️';
+                recordAudioButton.disabled = false;
+                recordingStatus.classList.remove('visible');
+                setLoadingState(false);
+                 if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+            }
+        }
+
+        /**
+         * Stops the audio recording if it's active.
+         * ஒலிப் பதிவு செயலில் இருந்தால் அதை நிறுத்துகிறது.
+         */
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                try {
+                    mediaRecorder.stop(); // This will trigger the 'onstop' event handler
+                    console.log("Stopping recording...");
+                    // UI updates are handled in onstop
+                } catch (error) {
+                     console.error("Error stopping mediaRecorder:", error);
+                     // Force cleanup if stop fails
+                     isRecording = false;
+                     recordAudioButton.classList.remove('recording');
+                     recordAudioButton.textContent = '🎙️';
+                     recordAudioButton.title = 'Record audio';
+                     recordingStatus.classList.remove('visible');
+                     if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+                     setLoadingState(false);
+                }
+            } else {
+                console.log("Not recording or recorder not available.");
+                 // Ensure UI is reset if state is inconsistent
+                 isRecording = false;
+                 recordAudioButton.classList.remove('recording');
+                 recordAudioButton.textContent = '🎙️';
+                 recordingStatus.classList.remove('visible');
+                 if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+            }
+             mediaRecorder = null; // Clean up recorder instance
+        }
+
+
+        // --- Chat Creation, Deletion, Switching ---
+        // (No changes needed here, copy from previous version)
+        async function createNewChat() {
+            if (!currentUser) { displayError("Please log in.\nஉள்நுழையவும்."); return; }
+            setLoadingState(true, "Creating chat...");
+            removeSelectedMedia(); // Clear media on new chat
+            const newChatRef = db.collection('chats').doc();
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            try {
+                await newChatRef.set({
+                    userId: currentUser.uid,
+                    title: NEW_CHAT_TITLE,
+                    createdAt: timestamp,
+                    lastUpdated: timestamp
+                });
+                console.log("New chat created:", newChatRef.id);
+                // Listener will automatically pick up the new chat and switch to it
+            } catch (error) {
+                console.error("Error creating new chat:", error);
+                displayError("Failed to create chat.\nஉரையாடலை உருவாக்க முடியவில்லை.");
+                setLoadingState(false);
+            }
+        }
+        function handleChatListClick(event) {
+             const target = event.target;
+             const deleteButton = target.closest('.delete-chat-button');
+             if (deleteButton) {
+                 event.stopPropagation();
+                 const chatId = deleteButton.dataset.id;
+                 const chatListItem = deleteButton.closest('.chat-list-item');
+                 const chatTitle = chatListItem?.textContent?.replace(deleteButton.textContent, '').trim() || 'this chat';
+                 if (chatId) { confirmAndDeleteChat(chatId, chatTitle); }
+                 return;
+             }
+             const item = target.closest('.chat-list-item');
+             const clickedId = item?.dataset?.id;
+             if (item && clickedId && clickedId !== activeChatId) {
+                 switchChat(clickedId);
+             }
+        }
+        function confirmAndDeleteChat(chatId, chatTitle) {
+            if (!currentUser || !chatId) return;
+            if (confirm(`Delete chat "${chatTitle}" permanently?\n"${chatTitle}" என்ற உரையாடலை நிரந்தரமாக நீக்கவா?`)) {
+                deleteChatFromFirestore(chatId);
+            } else {
+                console.log(`Deletion cancelled for chat: ${chatId}`);
+            }
+        }
+        async function deleteChatFromFirestore(chatId) {
+            if (!currentUser || !chatId) return;
+            isDeletingChat = true; // Flag to prevent race conditions with listener
+            console.log(`[Delete Start] Chat: ${chatId}`);
+            setLoadingState(true, "Deleting chat...");
+            const chatDocRef = db.collection('chats').doc(chatId);
+            const messagesRef = chatDocRef.collection('messages');
+            try {
+                // Delete all messages in the chat subcollection
+                const messagesSnapshot = await messagesRef.get();
+                if (!messagesSnapshot.empty) {
+                    const batch = db.batch();
+                    messagesSnapshot.docs.forEach(doc => { batch.delete(doc.ref); });
+                    await batch.commit();
+                    console.log(`[Delete] Deleted ${messagesSnapshot.size} messages.`);
+                }
+                // Delete the chat document itself
+                await chatDocRef.delete();
+                console.log(`[Delete Success] Chat doc: ${chatId}`);
+                // If the deleted chat was active, reset the view
+                if (activeChatId === chatId) {
+                    activeChatId = null;
+                    currentChatHistory = [];
+                    if (activeChatListener) { activeChatListener(); activeChatListener = null; }
+                    chatArea.innerHTML = '';
+                    renderGreetingOrLoginPrompt();
+                    userInput.placeholder = "Select or create chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்";
+                    sendButton.disabled = true;
+                    mcqModeCheckbox.disabled = true;
+                    imageUploadButton.disabled = true;
+                    audioUploadButton.disabled = true;
+                    recordAudioButton.disabled = true;
+                    removeSelectedMedia(); // Clear media preview
+                }
+                // Let the chat list listener handle sidebar updates implicitly
+            } catch (error) {
+                console.error(`[Delete Error] Chat ${chatId}:`, error);
+                displayError(`Failed to delete chat.\nஉரையாடலை நீக்க முடியவில்லை.`);
+                setLoadingState(false); // Ensure loading state is turned off on error
+            } finally {
+                // Delay resetting the flag slightly to allow listener to process deletion if needed
+                setTimeout(() => {
+                     isDeletingChat = false;
+                     console.log(`[Delete End] Chat: ${chatId}`);
+                     // setLoadingState might be called again by the listener, which is okay.
+                 }, 500);
+            }
+        }
+        function switchChat(chatId) {
+             if (!currentUser || !chatId || chatId === activeChatId) return;
+             console.log("Switching to chat:", chatId);
+             setLoadingState(true, "Loading chat...");
+             activeChatId = chatId;
+             removeSelectedMedia(); // Clear media when switching chats
+             highlightActiveChatInSidebar();
+             userInput.value = '';
+             autoGrowTextarea();
+             mcqModeCheckbox.checked = false;
+             userInput.placeholder = "Loading messages...";
+             loadAndListenForActiveChat(chatId);
+        }
+
+        // --- Message Loading (Firestore) ---
+        function loadAndListenForActiveChat(chatId) {
+            if (!currentUser || !chatId) {
+                chatArea.innerHTML = '';
+                if (activeChatListener) { activeChatListener(); activeChatListener = null; }
+                renderGreetingOrLoginPrompt();
+                setLoadingState(false);
+                sendButton.disabled = true; mcqModeCheckbox.disabled = true;
+                imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
+                return;
+            }
+            if (activeChatListener) {
+                activeChatListener(); // Stop previous listener
+                activeChatListener = null;
+            }
+
+            const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'asc');
+            chatArea.innerHTML = ''; // Clear previous messages
+            const loadingMsg = displayMessage("Loading chat history...", 'ai', ['thinking']);
+            scrollToBottom(true);
+            console.log(`Listening for messages in chat ${chatId}`);
+
+            activeChatListener = messagesRef.onSnapshot(snapshot => {
+                console.log(`Received messages snapshot for chat ${chatId}:`, snapshot.size, "messages");
+                removeMessageElement(loadingMsg); // Remove "Loading..." message
+                chatArea.innerHTML = ''; // Clear again to redraw all messages
+                currentChatHistory = []; // Reset API history context
+
+                if (snapshot.empty && activeChatId === chatId) {
+                    // Handle empty chat - check title
+                    const chatListItem = chatListContainer.querySelector(`.chat-list-item[data-id="${chatId}"]`);
+                    const chatTitle = chatListItem?.textContent?.replace(DELETE_ICON, '').trim() || '';
+                    if (chatTitle && chatTitle !== NEW_CHAT_TITLE) {
+                        displayMessage("Chat empty. Send a message!\nஉரையாடல் காலியாக உள்ளது. ஒரு செய்தியை அனுப்பவும்!", 'ai');
+                    } else {
+                        // It's a truly new, empty chat, show greeting
+                        renderGreetingOrLoginPrompt();
+                    }
+                } else {
+                    snapshot.forEach(doc => {
+                        const msgData = doc.data();
+                        const text = typeof msgData.text === 'string' ? msgData.text : "";
+                        const role = msgData.role === 'user' ? 'user' : 'model';
+
+                        // Prepare simplified history for API (text only for now)
+                        // We reconstruct parts with media just before the API call
+                        currentChatHistory.push({
+                            role: role,
+                            parts: [{ text: text }] // Store only text for API history context
+                        });
+
+                        // Display message with all data (including media if stored)
+                        displayMessage(text, role, [], null, msgData);
+                    });
+                }
+                scrollToBottom(true); // Scroll after rendering
+                setLoadingState(false); // Done loading
+                const enable = !API_KEY;
+                sendButton.disabled = enable; mcqModeCheckbox.disabled = enable;
+                imageUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable;
+                userInput.placeholder = "Enter prompt, attach media, or paste URL\nஉள்ளீட்டை உள்ளிடவும், மீடியாவை இணைக்கவும், அல்லது URL ஐ ஒட்டவும்";
+                 if (!isTestMode && !isReviewMode) userInput.focus();
+
+            }, error => {
+                console.error(`Error listening messages chat ${chatId}:`, error);
+                displayError("Could not load messages.\nசெய்திகளை ஏற்ற முடியவில்லை.");
+                removeMessageElement(loadingMsg);
+                chatArea.innerHTML = '';
+                currentChatHistory = [];
+                setLoadingState(false);
+                sendButton.disabled = true; mcqModeCheckbox.disabled = true;
+                imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
+                userInput.placeholder = "Error loading chat / உரையாடலை ஏற்றுவதில் பிழை";
+            });
+        }
+
+        // --- Message Sending (Gemini API & Firestore Save) ---
+        async function handleSendMessage() {
+            const userMessageTextRaw = userInput.value.trim();
+            const mediaToSend = selectedMediaData.base64 ? { ...selectedMediaData } : null; // Copy current media state
+
+            if (!API_KEY) { displayError("API Key not set.\nAPI விசை அமைக்கப்படவில்லை."); return; }
+            if (!currentUser) { displayError("Please log in.\nஉள்நுழையவும்."); return; }
+            if (!activeChatId) { displayError("Please select/create a chat.\nஒரு உரையாடலைத் தேர்ந்தெடுக்கவும்/உருவாக்கவும்."); return; }
+            if (!userMessageTextRaw && !mediaToSend) { // Allow sending media only
+                console.log("Nothing to send.");
+                return;
+            }
+            if (sendButton.disabled || isRecording) { // Don't send while recording
+                console.log("Send button disabled or recording active.");
+                return;
+            }
+
+            const isMCQRequest = mcqModeCheckbox.checked;
+            setLoadingState(true, "Sending...");
+
+            // Clear input *after* copying values
+            userInput.value = '';
+            autoGrowTextarea();
+            if (isMCQRequest) mcqModeCheckbox.checked = false;
+            removeSelectedMedia(); // Clear preview & state AFTER copying
+
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
+            const messagesColRef = db.collection('chats').doc(activeChatId).collection('messages');
+            const chatDocRef = db.collection('chats').doc(activeChatId);
+
+            let isFirstUserMessageInNewChat = false;
+            let potentialTestTitle = null;
+
+            // --- Handle YouTube URL ---
+            const youtubeMatch = userMessageTextRaw.match(youtubeRegex);
+            const youtubeUrl = youtubeMatch ? youtubeMatch[0] : null;
+            const youtubeVideoId = youtubeMatch ? youtubeMatch[1] : null;
+
+            if (youtubeUrl) {
+                console.log("Detected YouTube URL:", youtubeUrl, "ID:", youtubeVideoId);
+            }
+
+             // --- Prepare User Message Data for Firestore ---
+             // Store raw text, media data (if any), and YT ID (if any) for display
+             const userMsgData = {
+                 role: "user",
+                 text: userMessageTextRaw,
+                 timestamp: timestamp,
+                 ...(youtubeVideoId && { youtubeVideoId: youtubeVideoId }), // For embedding video
+                 ...(mediaToSend?.type === 'image' && { // Store image data for display
+                     mediaType: 'image',
+                     mediaData: mediaToSend.base64, // Store base64 for image display
+                     mediaMimeType: mediaToSend.mimeType
+                 }),
+                 ...(mediaToSend?.type === 'audio' && { // Store audio data for display
+                     mediaType: 'audio',
+                     mediaData: mediaToSend.base64, // Store base64 for audio playback
+                     mediaMimeType: mediaToSend.mimeType,
+                     mediaName: mediaToSend.name || 'audio_message'
+                 })
+             };
+             // Avoid logging large base64 strings
+             const loggableUserMsgData = {
+                ...userMsgData,
+                ...(userMsgData.mediaData && { mediaData: `[${userMsgData.mediaType} Base64 Data (${(userMsgData.mediaData.length / 1024 / 1024 * 0.75).toFixed(2)}MB)]` }) // Estimate size
+             };
+             console.log("Saving User Message to Firestore:", loggableUserMsgData);
+
+
+             // --- Save User Message to Firestore ---
+             try {
+                 const chatSnap = await chatDocRef.get();
+                 if (chatSnap.exists && chatSnap.data().title === NEW_CHAT_TITLE) {
+                     const messagesSnap = await messagesColRef.limit(1).get();
+                     if (messagesSnap.empty) { isFirstUserMessageInNewChat = true; }
+                 }
+                 await messagesColRef.add(userMsgData); // Save the full data
+                 await chatDocRef.update({ lastUpdated: timestamp });
+                 console.log("User message saved to Firestore.");
+                 if (isFirstUserMessageInNewChat) {
+                    let titleTextSource = userMessageTextRaw;
+                    if (!titleTextSource) {
+                        if (mediaToSend?.type === 'image') titleTextSource = "Image Upload";
+                        else if (mediaToSend?.type === 'audio') titleTextSource = "Audio Message";
+                        else titleTextSource = NEW_CHAT_TITLE;
+                    }
+                    const generatedTitle = generateChatTitle(titleTextSource);
+                    if (generatedTitle && generatedTitle !== NEW_CHAT_TITLE) {
+                        await updateActiveChatTitle(generatedTitle);
+                        console.log("Chat title updated:", generatedTitle);
+                    }
+                 }
+             } catch(error) {
+                 console.error("Error saving user message:", error);
+                 displayError("Failed to send message.\nசெய்தியை அனுப்ப முடியவில்லை.");
+                 setLoadingState(false); return;
+             }
+
+             // Display "Thinking..."
+            const thinking = displayMessage("Thinking... / சிந்திக்கிறது...", 'ai', ['thinking']);
+            scrollToBottom();
+
+            // --- Prepare Parts for CURRENT API Call ---
+            const currentUserPartsForAPI = [];
+            let userTextForPrompt = userMessageTextRaw; // Start with raw text
+
+            // Handle MCQ Prompt Modification
+            if (isMCQRequest) {
+                 if (!userMessageTextRaw && !mediaToSend) { // Require text OR media for MCQ
+                     displayError("Cannot generate MCQs without a text prompt or media.\nMCQ களை உருவாக்க உரை அல்லது மீடியா தேவை.");
+                     removeMessageElement(thinking); setLoadingState(false); return;
+                 }
+                 let baseTitle = userMessageTextRaw;
+                 if (!baseTitle) {
+                    if (mediaToSend?.type === 'image') baseTitle = "Image Analysis";
+                    else if (mediaToSend?.type === 'audio') baseTitle = "Audio Analysis";
+                    else baseTitle = "Generated Test";
+                 }
+                 potentialTestTitle = generateChatTitle(baseTitle);
+                 potentialTestTitle = (potentialTestTitle === NEW_CHAT_TITLE || !potentialTestTitle) ? "Generated Test" : potentialTestTitle;
+                 potentialTestTitle += ` (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
+
+                 // Append the MCQ request to the user's text (or use it as the text if none was provided)
+                 const mcqInstructions = `\n\nPlease generate multiple choice questions based on the provided text, image, or audio. Provide the response *only* as a valid JSON array string, enclosed within \`\`\`json ... \`\`\`.
+Each object in the array must have these exact keys:
+1.  "question": An object with "en" (English question) and "ta" (Tamil question) string properties.
+2.  "options": An array of 4 objects. Each object must have "en" (English option) and "ta" (Tamil option) string properties.
+3.  "answer": A string representing the correct option letter ('A', 'B', 'C', or 'D'). This should NOT be bilingual.
+4.  "explanation": An object with "en" (English explanation) and "ta" (Tamil explanation) string properties.
+Provide accurate Tamil translations. Do not include any text outside the JSON structure.`;
+                 userTextForPrompt = userTextForPrompt ? userTextForPrompt + mcqInstructions : mcqInstructions;
+                 console.log("MCQ mode: Modified text prompt for API, title:", potentialTestTitle);
+             }
+
+             // Add Text Part (if exists)
+             if (userTextForPrompt) {
+                 currentUserPartsForAPI.push({ text: userTextForPrompt });
+             }
+
+             // Add Media Part (Image or Audio)
+             if (mediaToSend && mediaToSend.base64 && mediaToSend.mimeType) {
+                 // Extract only the base64 data (remove the "data:mime/type;base64," prefix)
+                 const base64DataOnly = mediaToSend.base64.substring(mediaToSend.base64.indexOf(',') + 1);
+                 currentUserPartsForAPI.push({
+                     inlineData: {
+                         mimeType: mediaToSend.mimeType,
+                         data: base64DataOnly
+                     }
+                 });
+                 console.log(`Preparing ${mediaToSend.type} for API: ${mediaToSend.mimeType}`);
+             }
+
+             // Add YouTube Video Part (if exists, mutually exclusive with file upload for now?)
+             // API might handle multiple types, let's allow it.
+             if (youtubeUrl) {
+                 currentUserPartsForAPI.push({
+                     fileData: {
+                         // MimeType seems optional for fileUri according to docs
+                         fileUri: youtubeUrl
+                     }
+                 });
+                 console.log(`Preparing YouTube URI for API: ${youtubeUrl}`);
+             }
+
+             // --- Prepare History for API (Text Only - currentChatHistory already holds this) ---
+             const apiHistoryForCall = currentChatHistory.map(msg => ({
+                 role: msg.role,
+                 parts: msg.parts.filter(part => part.text) // Ensure text part exists
+             })).filter(msg => msg.parts.length > 0); // Ensure message has parts
+
+             // --- Combine History + Current Parts for API ---
+             const finalContentsForAPI = [...apiHistoryForCall];
+             if (currentUserPartsForAPI.length > 0) {
+                  finalContentsForAPI.push({ role: "user", parts: currentUserPartsForAPI });
+             } else {
+                 console.warn("No valid parts generated for the current user message.");
+                 removeMessageElement(thinking); setLoadingState(false); return; // Avoid empty API call
+             }
+
+             // Check total estimated size (simple base64 check, rough estimate)
+             let estimatedSizeMB = JSON.stringify(finalContentsForAPI).length / 1024 / 1024;
+             console.log(`Estimated API request size: ${estimatedSizeMB.toFixed(2)} MB`);
+             if (estimatedSizeMB > 18) { // Leave some margin for headers etc. below 20MB
+                 console.warn("Request size might exceed 20MB limit for inline data.");
+                 // In a real app, implement File API upload here.
+                 // For now, we proceed but it might fail.
+             }
+
+             console.warn("Calling Gemini API (Model:", MODEL_NAME, ") with multimodal input. Ensure API key has access.");
+             // --- Call Gemini API ---
+             try {
+                 const response = await fetch(API_URL_BASE + API_KEY, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                         contents: finalContentsForAPI, // Send combined history and current message
+                         safetySettings: [
+                            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+                         ]
+                         // generationConfig: { candidateCount: 1 } // Default is 1
+                     }),
+                 });
+
+                 removeMessageElement(thinking);
+
+                 // --- Process API Response ---
+                 // Default error message
+                 let aiMsgData = {
+                     role: "model",
+                     text: "Error: No valid response from API.\nAPI இலிருந்து சரியான பதில் இல்லை.",
+                     timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                     mcqData: null,
+                     mcqTitle: null
+                 };
+                 let displayAsError = true;
+
+                 if (!response.ok) {
+                     let errorDetails = `API error (${response.status})`;
+                     try {
+                         const errorJson = await response.json();
+                         errorDetails = errorJson.error?.message || errorDetails;
+                     } catch {}
+                     console.error("API Error:", response.status, errorDetails);
+                     aiMsgData.text = `Error: ${errorDetails}\nபிழை: ${errorDetails}`;
+                     // Specific check for invalid API key
+                     if (response.status === 400 && errorDetails.toLowerCase().includes('api key not valid')) {
+                         localStorage.removeItem(STORAGE_KEY_API_KEY); // Clear the bad key
+                         API_KEY=''; // Clear runtime key
+                         aiMsgData.text += "\nInvalid API Key cleared. Reload page.\nதவறான API விசை அழிக்கப்பட்டது. பக்கத்தை மீண்டும் ஏற்றவும்.";
+                     }
+                 } else {
+                     const data = await response.json();
+                     console.log("API Response Data:", data); // Log the full response
+
+                     let rawAiText = "";
+                     let blocked = false;
+                     displayAsError = false; // Assume success unless blocked or no content
+
+                     // Check for prompt feedback blocks first
+                     if (data.promptFeedback?.blockReason) {
+                         aiMsgData.text = `Blocked (Prompt): ${data.promptFeedback.blockReason}\nதடுக்கப்பட்டது (உள்ளீடு): ${data.promptFeedback.blockReason}`;
+                         blocked = true;
+                         displayAsError = true;
+                         console.warn("Prompt blocked:", data.promptFeedback.blockReason);
+                     }
+                     // Check candidate-level blocks or finish reasons
+                     else if (data.candidates && data.candidates.length > 0) {
+                         const candidate = data.candidates[0];
+                         if (candidate.finishReason === 'SAFETY') {
+                             aiMsgData.text = `Blocked (Response Safety)\nதடுக்கப்பட்டது (பதில் பாதுகாப்பு)`;
+                             blocked = true;
+                             displayAsError = true;
+                             console.warn("Response blocked due to safety:", candidate.safetyRatings);
+                         } else if (candidate.finishReason === 'RECITATION') {
+                              aiMsgData.text = `Blocked (Response Recitation)\nதடுக்கப்பட்டது (பதில் ஒப்புவித்தல்)`;
+                              blocked = true;
+                              displayAsError = true;
+                              console.warn("Response blocked due to recitation.");
+                         } else if (candidate.content?.parts?.length > 0) {
+                             // Valid content received
+                             rawAiText = candidate.content.parts.map(part => part.text || '').join(''); // Combine text parts
+                             aiMsgData.text = rawAiText;
+                             displayAsError = false; // Success
+
+                             // --- Parse MCQ if requested ---
+                             if (isMCQRequest && !blocked) {
+                                 console.log("Attempting to parse MCQ JSON...");
+                                 try {
+                                     const jsonMatch = rawAiText.match(/```json\s*([\s\S]*?)\s*```/);
+                                     const jsonString = jsonMatch ? jsonMatch[1].trim() : rawAiText.trim();
+                                     // Basic check for array structure
+                                     if (jsonString.startsWith('[') && jsonString.endsWith(']')) {
+                                         const mcqs = JSON.parse(jsonString);
+                                         // Add more robust validation as before
+                                         const isValidMCQArray = Array.isArray(mcqs) && mcqs.length > 0 && mcqs.every(q =>
+                                             q && typeof q.question === 'object' && q.question !== null && typeof q.question.en === 'string' && typeof q.question.ta === 'string' &&
+                                             Array.isArray(q.options) && q.options.length === 4 && q.options.every(opt => opt && typeof opt.en === 'string' && typeof opt.ta === 'string') &&
+                                             typeof q.answer === 'string' && ['A','B','C','D'].includes(q.answer.toUpperCase()) &&
+                                             typeof q.explanation === 'object' && q.explanation !== null && typeof q.explanation.en === 'string' && typeof q.explanation.ta === 'string'
+                                         );
+                                         if (isValidMCQArray) {
+                                             const summaryText = `Generated ${mcqs.length} MCQs. / ${mcqs.length} MCQகள் உருவாக்கப்பட்டுள்ளன.`;
+                                             aiMsgData.text = summaryText; // Replace raw JSON with summary
+                                             aiMsgData.mcqData = mcqs;
+                                             aiMsgData.mcqTitle = potentialTestTitle;
+                                             console.log("MCQs parsed successfully:", mcqs.length);
+                                             displayAsError = false;
+                                         } else {
+                                             console.warn("MCQ JSON validation failed. Structure incorrect.");
+                                             aiMsgData.text = "MCQ format error (Invalid Structure).\nMCQ வடிவமைப்பு பிழை (தவறான கட்டமைப்பு).\n\n" + rawAiText; // Show raw text if parsing fails
+                                             displayAsError = true;
+                                             aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
+                                         }
+                                     } else {
+                                         console.warn("MCQ response not a JSON array string.");
+                                         aiMsgData.text = "Expected MCQ JSON format error (Not an Array).\nஎதிர்பார்க்கப்பட்ட MCQ JSON வடிவமைப்பு பிழை (வரிசை இல்லை).\n\n" + rawAiText;
+                                         displayAsError = true;
+                                         aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
+                                     }
+                                 } catch (parseError) {
+                                     console.error("Failed to parse MCQ JSON:", parseError);
+                                     aiMsgData.text = "Error parsing MCQ JSON.\nMCQ JSON ஐப் பாகுபடுத்துவதில் பிழை.\n\n" + rawAiText;
+                                     displayAsError = true;
+                                     aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
+                                 }
+                             } // End MCQ parsing
+
+                         } else if (candidate.finishReason === 'STOP') {
+                             // Model finished, but no text part - could be okay, or empty response
+                             console.warn("API response finished with STOP but no text part found.");
+                             aiMsgData.text = "(Model response finished without text / மாதிரி பதில் உரை இல்லாமல் முடிந்தது)";
+                             displayAsError = false; // Consider this non-error for now
+                         } else {
+                             // Other finish reasons like MAX_TOKENS, etc.
+                             console.warn("Unexpected API finish reason:", candidate.finishReason, data);
+                             aiMsgData.text = `Sorry, received an unexpected response. (Reason: ${candidate.finishReason || 'Unknown'})\nமன்னிக்கவும், எதிர்பாராத பதில் கிடைத்தது. (காரணம்: ${candidate.finishReason || 'தெரியாதது'})`;
+                             displayAsError = true;
+                         }
+                     } else {
+                         // No candidates array, or empty - this shouldn't happen with candidateCount=1
+                         console.error("API Error: No candidates found in response.");
+                         aiMsgData.text = "Error: No response data from API.\nபிழை: API இலிருந்து பதில் தரவு இல்லை.";
+                         displayAsError = true;
+                     }
+                 }
+
+                 // --- Save AI Response to Firestore ---
+                 try {
+                      // Avoid logging large base64 strings here too
+                      const loggableAiMsgData = {
+                          ...aiMsgData,
+                          ...(aiMsgData.mcqData && { mcqData: `[${aiMsgData.mcqData.length} MCQs]` })
+                      };
+                      console.log("Saving AI Response to Firestore:", loggableAiMsgData);
+                      await messagesColRef.add(aiMsgData); // Save full AI data
+                      await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
+                      console.log("AI response/error saved to Firestore.");
+                 } catch (saveError) {
+                      console.error("Error saving AI response:", saveError);
+                      // Display the AI's text even if saving failed, but show an additional error
+                      displayError(`Failed to save response: ${aiMsgData.text}\nபதிலைச் சேமிக்க முடியவில்லை: ${aiMsgData.text}`);
+                 }
+
+             } catch (fetchError) { // Network errors etc.
+                 console.error("API Fetch Error:", fetchError);
+                 removeMessageElement(thinking);
+                 const errorText = `API Error: ${fetchError.message || "Network issue."}\nAPI பிழை: ${fetchError.message || "நெட்வொர்க் சிக்கல்."}`;
+                 displayError(errorText);
+                 // Try to save the fetch error message to Firestore history
+                 try {
+                      await messagesColRef.add({ role: "model", text: errorText, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
+                      await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
+                 } catch (saveError) { console.error("Failed to save fetch error:", saveError); }
+             } finally {
+                 setLoadingState(false);
+                 if (!isTestMode && !isReviewMode && activeChatId) { userInput.focus(); }
+             }
+        } // End of handleSendMessage
+
+        // --- Chat Title Generation/Update ---
+        // (No changes needed here, copy from previous version)
+        function generateChatTitle(sourceText) { if (!sourceText || typeof sourceText !== 'string') return NEW_CHAT_TITLE; const text = sourceText.trim(); if (!text) return NEW_CHAT_TITLE; const title = text.split(/\s+/).slice(0, 5).join(' ').replace(/[.,!?;:]+$/, ''); return title.length > 35 ? title.substring(0, 32) + '...' : title; }
+        async function updateActiveChatTitle(newTitle) { if (!currentUser || !activeChatId || !newTitle || typeof newTitle !== 'string' || !newTitle.trim() || newTitle.trim() === NEW_CHAT_TITLE) return; const finalTitle = newTitle.trim(); const chatDocRef = db.collection('chats').doc(activeChatId); try { await chatDocRef.update({ title: finalTitle }); console.log(`Chat ${activeChatId} title updated: "${finalTitle}"`); } catch (error) { console.error("Error updating chat title:", error); } }
+
+
+        // --- UI & Message Display Helpers ---
+        function autoGrowTextarea() { userInput.style.height='auto'; userInput.style.height=(userInput.scrollHeight)+'px'; }
+        function handleInputKeydown(event) { if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleSendMessage();} }
+        function handleSuggestionClick(event) { if(event.target.classList.contains('suggestion-chip')){userInput.value=event.target.dataset.prompt||'';autoGrowTextarea();userInput.focus();} }
+        function displayError(text) { console.error("Displaying Error:", text); displayMessage(`${text}`, 'ai', ['error-message']); scrollToBottom(); } // Removed "Error:" prefix as it's added in calls
+        function scrollToBottom(immediate = false) { chatArea.scrollTo({top:chatArea.scrollHeight,behavior:immediate?'auto':'smooth'}); }
+        function removeMessageElement(element) { if(element && element.parentNode === chatArea) { chatArea.removeChild(element); } }
+
+        function setLoadingState(isLoading, message = "Generating...") {
+             // Determine overall disabled state
+             const isDisabledOverall = isLoading || !currentUser || !API_KEY;
+             // Determine send button state (needs active chat)
+             const isSendDisabled = isDisabledOverall || !activeChatId || isRecording; // Also disable send if recording
+             // Determine media/record button state (needs active chat for sending)
+             const isMediaDisabled = isDisabledOverall || !activeChatId || isRecording; // Disable media interaction if loading or recording
+             // Determine non-chat specific controls state
+             const isControlDisabled = isLoading || !currentUser || isRecording; // Disable sidebar controls etc. if loading or recording
+
+             // Apply states
+             userInput.disabled = isDisabledOverall || isRecording;
+             sendButton.disabled = isSendDisabled;
+             mcqModeCheckbox.disabled = isSendDisabled;
+
+             imageUploadButton.disabled = isMediaDisabled;
+             audioUploadButton.disabled = isMediaDisabled;
+             // Special handling for record button: allow stopping if recording
+             recordAudioButton.disabled = isDisabledOverall || !activeChatId; // Base disable state
+             if (isRecording) {
+                 recordAudioButton.disabled = false; // Always allow stopping
+                 imageUploadButton.disabled = true; // Force disable other media if recording
+                 audioUploadButton.disabled = true;
+                 userInput.disabled = true; // Force disable text input if recording
+                 sendButton.disabled = true; // Force disable send if recording
+                 mcqModeCheckbox.disabled = true;
+             }
+
+             startChatButton.disabled = isControlDisabled;
+             testSearchInput.disabled = isControlDisabled;
+             decreaseTextBtn.disabled = isControlDisabled || (currentUser && currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER);
+             increaseTextBtn.disabled = isControlDisabled || (currentUser && currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER);
+             themeToggleButton.disabled = isControlDisabled;
+
+             // Update placeholder text
+             if (isLoading && !isRecording) { userInput.placeholder = message; }
+             else if (isRecording) { userInput.placeholder = "Recording audio... / ஒலி பதிவு செய்யப்படுகிறது..."; }
+             else if (!currentUser) { userInput.placeholder = "Please log in / உள்நுழையவும்"; }
+             else if (!activeChatId) { userInput.placeholder = "Select or create a chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்"; }
+             else if (!API_KEY) { userInput.placeholder = "API Key missing. / API விசை இல்லை."; }
+             else { userInput.placeholder = "Enter prompt, attach media, or paste URL\nஉள்ளீட்டை உள்ளிடவும், மீடியாவை இணைக்கவும், அல்லது URL ஐ ஒட்டவும்"; }
+         }
+
+        function switchView(viewName, cameFromTests = false) {
+            console.log("Switching view to:", viewName);
+            chatView.classList.remove('active');
+            reviewView.classList.remove('active');
+            testView.classList.remove('active');
+            appContainer.classList.remove('hidden'); // Ensure app container is visible unless it's test view
+
+            isTestMode = false;
+            isReviewMode = false;
+            cameFromAllTestsList = cameFromTests;
+
+            // Reset review buttons
+            saveReviewBtn.style.display = 'none';
+            exitReviewBtn.style.display = 'none';
+
+            if(viewName === 'test'){
+                appContainer.classList.add('hidden'); // Hide main app for test overlay
+                testView.classList.add('active');
+                isTestMode = true;
+            } else if(viewName === 'review'){
+                reviewView.classList.add('active');
+                isReviewMode = true;
+                exitReviewBtn.style.display = 'inline-block'; // Show exit button
+                exitReviewBtn.textContent = cameFromAllTestsList ? "Back to All Tests" : "Back to Chat"; // Set appropriate text
+            } else { // Default to chat view
+                chatView.classList.add('active');
+                 // Focus input only if conditions are met
+                 if (currentUser && activeChatId && API_KEY && !isRecording) {
+                     setTimeout(() => userInput.focus(), 100); // Delay focus slightly
+                 }
+            }
+
+            // Clear test timer if switching away from test view
+            if (viewName !== 'test' && testTimerInterval) {
+                clearInterval(testTimerInterval);
+                testTimerInterval = null;
+            }
+        }
+
+        /**
+         * Displays a message in the chat area. Handles text formatting,
+         * MathJax, images (uploaded/URL), YouTube embeds, and audio playback.
+         * அரட்டைப் பகுதியில் ஒரு செய்தியைக் காட்டுகிறது. உரை வடிவமைப்பு,
+         * MathJax, படங்கள் (பதிவேற்றப்பட்ட/URL), YouTube உட்பொதிகள் மற்றும் ஒலி பின்னணி ஆகியவற்றைக் கையாளுகிறது.
+         */
+        function displayMessage(text, sender, cssClasses = [], appendHtml = null, messageData = null) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', `${sender}-message`);
+            if (cssClasses && cssClasses.length > 0) {
+                messageElement.classList.add(...cssClasses);
+            }
+
+            let hasContent = false; // Track if any content is added
+
+            // Display Uploaded/Sent Media (Image or Audio) from Firestore data
+            if (messageData?.mediaType === 'image' && messageData.mediaData) {
+                const img = document.createElement('img');
+                img.src = messageData.mediaData; // Assumes base64 data URL stored
+                img.alt = "Uploaded Image";
+                img.classList.add('uploaded-image');
+                img.loading = "lazy";
+                messageElement.appendChild(img);
+                hasContent = true;
+            } else if (messageData?.mediaType === 'audio' && messageData.mediaData) {
+                const audioContainer = document.createElement('div');
+                audioContainer.classList.add('chat-audio-player');
+                const audioPlayer = document.createElement('audio');
+                audioPlayer.src = messageData.mediaData; // Assumes base64 data URL stored
+                audioPlayer.controls = true;
+                audioPlayer.preload = "metadata"; // Load only metadata initially
+                audioContainer.appendChild(audioPlayer);
+
+                // Optional: Add filename if stored
+                // if (messageData.mediaName) {
+                //     const fileNameSpan = document.createElement('span');
+                //     fileNameSpan.textContent = messageData.mediaName;
+                //     fileNameSpan.style.fontSize = '0.8em';
+                //     fileNameSpan.style.marginLeft = '10px';
+                //     fileNameSpan.style.color = 'var(--text-secondary)';
+                //     audioContainer.appendChild(fileNameSpan);
+                // }
+
+                messageElement.appendChild(audioContainer);
+                hasContent = true;
+            }
+
+            // Format and Display Text Content
+            if (text) {
+                const messageContentContainer = document.createElement('div');
+                const tempDiv = document.createElement('div');
+                tempDiv.innerText = text; // Basic sanitization against direct HTML injection in text
+                let formattedText = tempDiv.innerHTML;
+
+                // Parse Image URLs in text (only if no uploaded image was part of this specific message)
+                if (messageData?.mediaType !== 'image') {
+                    formattedText = formattedText.replace(imageUrlRegex, (match, imgUrl) =>
+                        `<img src="${imgUrl}" class="chat-image" alt="Chat Image" loading="lazy">`
+                    );
+                }
+
+                // Code blocks, inline code, bold, italics, newlines
+                formattedText = formattedText
+                    .replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`)
+                    .replace(/`([^`]+)`/g, (match, code) => `<code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`)
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>') // Non-greedy *italic*
+                    .replace(/\n/g, '<br>');
+
+                messageContentContainer.innerHTML = formattedText;
+                messageElement.appendChild(messageContentContainer);
+                hasContent = true;
+
+                // Try to render MathJax if text contains potential math
+                 if (text.includes('$') || text.includes('\\')) {
+                    try {
+                         if (typeof MathJax !== "undefined" && MathJax.typesetPromise) {
+                            // Delay typesetting slightly to ensure element is in DOM
+                            setTimeout(() => {
+                                MathJax.typesetPromise([messageContentContainer]).catch(err => console.error('MathJax typesetting error:', err));
+                            }, 0);
+                         }
+                     } catch (e) { console.error("MathJax call failed:", e); }
+                 }
+            }
+
+            // YouTube Embed
+            if (messageData?.youtubeVideoId) {
+                const youtubeEmbedDiv = document.createElement('div');
+                youtubeEmbedDiv.classList.add('youtube-embed-container');
+                const iframe = document.createElement('iframe');
+                iframe.classList.add('chat-video');
+                iframe.src = `https://www.youtube.com/embed/${messageData.youtubeVideoId}`;
+                iframe.title = "YouTube video player";
+                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                iframe.allowFullscreen = true;
+                iframe.loading = "lazy";
+                youtubeEmbedDiv.appendChild(iframe);
+                messageElement.appendChild(youtubeEmbedDiv);
+                hasContent = true;
+            }
+
+            // MCQ Offer Button
+            if (messageData?.role === 'model' && messageData?.mcqData?.length > 0) {
+                displayMCQOffer(messageData.mcqData, messageData.mcqTitle, messageElement);
+                hasContent = true; // MCQ offer counts as content
+            }
+            // Append Raw HTML (Use with caution)
+            else if (appendHtml) {
+                const appendDiv = document.createElement('div');
+                appendDiv.innerHTML = appendHtml; // Security risk if appendHtml is not trusted
+                while (appendDiv.firstChild) {
+                    messageElement.appendChild(appendDiv.firstChild);
+                }
+                hasContent = true;
+            }
+
+            // Only append if there's actual content to display
+            if (hasContent) {
+                chatArea.appendChild(messageElement);
+            } else if (sender === 'ai' && !cssClasses.includes('thinking')) {
+                 // If AI message has no content and isn't 'thinking', log it but don't display empty bubble
+                 console.warn("Attempted to display an empty AI message:", messageData);
+            } else if (sender === 'user' && !text && !messageData?.mediaType && !messageData?.youtubeVideoId) {
+                // Don't display empty user messages unless they have media/youtube
+                console.warn("Attempted to display an empty user message:", messageData);
+            } else {
+                 // Append even if empty for 'thinking' messages or potentially other cases
+                 chatArea.appendChild(messageElement);
+            }
+
+
+            return messageElement;
+        }
+
+
+        // --- MCQ/Test Specific Functions ---
+        // (No changes needed here, copy from previous version)
+         function handleChatAreaClick(event) {
+            // Handle "Start Mock Test" button click
+            const startButton = event.target.closest('.start-test-button');
+            if (startButton) {
+                const mcqDataString = startButton.dataset.mcq;
+                const titleFromButton = startButton.dataset.mcqTitle;
+                let mcqs = null;
+                if (mcqDataString) {
+                    try { mcqs = JSON.parse(mcqDataString); }
+                    catch (e) { console.error("Failed parse MCQ data from button:", e); displayError("Could not start test. Invalid data.\nசோதனையைத் தொடங்க முடியவில்லை. தவறான தரவு."); return; }
+                }
+                if (mcqs?.length > 0) { startMockTest(mcqs, titleFromButton || null); }
+                else { displayError("MCQ data missing or invalid.\nMCQ தரவு இல்லை அல்லது தவறானது."); }
+                return; // Prevent other actions like image click
+            }
+
+            // Handle image click (open in new tab)
+            const clickedImage = event.target.closest('img.chat-image, img.uploaded-image');
+            if (clickedImage?.src && !clickedImage.src.endsWith('#')) { // Check if src is valid
+                try {
+                    // Prevent opening base64 data URIs directly if they are huge, though unlikely for images here
+                    if (!clickedImage.src.startsWith('data:')) {
+                         window.open(clickedImage.src, '_blank');
+                    } else {
+                        console.log("Clicked base64 image in chat.");
+                        // Optionally open in a modal or do nothing
+                    }
+                } catch (e) {
+                    console.error("Error opening image source:", e);
+                }
+            }
+             // Could add handling for clicking audio elements if needed (e.g., download)
+        }
+        function displayMCQOffer(mcqData, mcqTitle, aiMessageElement) {
+            // Avoid adding multiple buttons if message is re-rendered
+            if (aiMessageElement.querySelector('.start-test-button')) return;
+
+            const questionCount = mcqData.length;
+            const button = document.createElement('button');
+            button.classList.add('start-test-button');
+            button.textContent = `Start Mock Test (${questionCount} Qs) / மாதிரி சோதனை (${questionCount} கே)`;
+            button.title = mcqTitle || `Start generated test`;
+            try {
+                // Store the MCQ data directly on the button
+                button.dataset.mcq = JSON.stringify(mcqData);
+                if (mcqTitle) {
+                    button.dataset.mcqTitle = mcqTitle;
+                }
+            } catch (e) {
+                console.error("Failed stringify MCQ data for button:", e);
+                // Don't add the button if data can't be stored
+                return;
+            }
+            const buttonContainer = document.createElement('div');
+            buttonContainer.style.marginTop = '10px'; // Add some space
+            buttonContainer.appendChild(button);
+            aiMessageElement.appendChild(buttonContainer);
+        }
+        function toggleTestLanguage() { currentTestLanguage = (currentTestLanguage === 'en') ? 'ta' : 'en'; testLanguageToggle.textContent = (currentTestLanguage === 'en') ? 'தமிழ்' : 'English'; displayTestQuestion(currentQuestionIndex); }
+        function startMockTest(mcqs, title = null) { if (!currentUser) { displayError("Log in to start test.\nசோதனையைத் தொடங்க உள்நுழையவும்."); return; } if (!mcqs?.length) { displayError("No questions for test.\nசோதனைக்கு கேள்விகள் இல்லை."); if (cameFromAllTestsList) { switchView('chat'); } return; } console.log("Starting mock test:", mcqs.length, "Qs. Title:", title); currentTestMCQs = mcqs; currentQuestionIndex = 0; userAnswers = new Array(mcqs.length).fill(null); reviewResultsCache = null; currentTestLanguage = 'en'; // Default to English on start testLanguageToggle.textContent = 'தமிழ்'; switchView('test'); displayTestQuestion(0); startTestTimer(); const finalTitle = (title && title.trim()) ? title.trim() : `Mock Test (${mcqs.length} Qs)`; testTitle.textContent = finalTitle; }
+        function displayTestQuestion(index) { if (index < 0 || index >= currentTestMCQs.length) return; currentQuestionIndex = index; const questionData = currentTestMCQs[index]; const lang = currentTestLanguage; // 'en' or 'ta' const questionText = questionData.question?.[lang] || questionData.question?.en || "(Question missing)"; testQuestionNumber.textContent = `Question ${index + 1}`; testQuestion.innerHTML = questionText; // Use innerHTML for potential formatting testOptionsContainer.innerHTML = ''; const options = questionData.options || []; const optionLetters = ['A', 'B', 'C', 'D']; options.forEach((optionObj, optionIndex) => { if (optionIndex >= optionLetters.length) return; // Safety for >4 options const optionText = optionObj?.[lang] || optionObj?.en || '(Option missing)'; const label = document.createElement('label'); const input = document.createElement('input'); input.type = 'radio'; input.name = `q_${index}`; input.value = optionIndex; input.checked = (userAnswers[index] === optionIndex); input.onchange = () => handleOptionSelect(optionIndex); label.appendChild(input); label.appendChild(document.createTextNode(` ${optionLetters[optionIndex]}. ${optionText}`)); testOptionsContainer.appendChild(label); }); // Re-render MathJax if needed try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([testQuestion, testOptionsContainer]).catch(err=>console.error('MathJax Test Q Error:', err)); } } catch(e){ console.error("MathJax call failed in test:", e); } // Update navigation buttons prevQuestionBtn.disabled = (index === 0); nextQuestionBtn.disabled = (index === currentTestMCQs.length - 1); // Update counter questionCounter.textContent = `Q: ${index + 1} / ${currentTestMCQs.length}`; }
+        function handleOptionSelect(optionIndex) { if (currentQuestionIndex >= 0 && currentQuestionIndex < userAnswers.length) { userAnswers[currentQuestionIndex] = optionIndex; console.log(`Answered Q${currentQuestionIndex + 1}: Option ${optionIndex}`); } }
+        function handleTestNavigation(direction) { let newIndex = currentQuestionIndex; if (direction === 'prev' && currentQuestionIndex > 0) { newIndex--; } else if (direction === 'next' && currentQuestionIndex < currentTestMCQs.length - 1) { newIndex++; } if (newIndex !== currentQuestionIndex) { displayTestQuestion(newIndex); } }
+        function startTestTimer() { if (testTimerInterval) clearInterval(testTimerInterval); testStartTime = Date.now(); testTimer.textContent = `Time: 00:00`; testTimerInterval = setInterval(() => { const elapsedSeconds = Math.floor((Date.now() - testStartTime) / 1000); const minutes = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0'); const seconds = (elapsedSeconds % 60).toString().padStart(2, '0'); testTimer.textContent = `Time: ${minutes}:${seconds}`; }, 1000); }
+        function submitTest() { if (!confirm("Submit test?\nசோதனையைச் சமர்ப்பிக்கவா?")) return; if (testTimerInterval) clearInterval(testTimerInterval); const endTime = Date.now(); const timeTakenMs = testStartTime ? endTime - testStartTime : 0; const results = calculateResults(currentTestMCQs, userAnswers, timeTakenMs); reviewResultsCache = results; // Store results for display/save switchView('review', false); // Switch to review view displayReview(results); }
+
+        // --- Review Functions ---
+        // (No changes needed here, copy from previous version)
+        function toggleReviewLanguage() { currentReviewLanguage = (currentReviewLanguage === 'en') ? 'ta' : 'en'; reviewLanguageToggle.textContent = (currentReviewLanguage === 'en') ? 'தமிழ்' : 'English'; if (reviewResultsCache) { displayReview(reviewResultsCache); // Re-render review with new language } }
+        function calculateResults(mcqs, answers, timeMs) { let correctCount = 0; let incorrectCount = 0; let skippedCount = 0; const reviewQuestions = []; mcqs.forEach((questionData, index) => { const userAnswerIndex = answers[index]; // 0, 1, 2, 3 or null const options = questionData.options || []; const correctAnswerLetter = questionData.answer?.trim().toUpperCase(); const correctAnswerIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 'A'.charCodeAt(0) : -1; const correctAnswerTextEn = (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) ? (options[correctAnswerIndex]?.en || '?') : "N/A"; let userAnswerTextEn = "Skipped"; let status = "skipped"; if (userAnswerIndex !== null && userAnswerIndex >= 0 && userAnswerIndex < options.length) { userAnswerTextEn = options[userAnswerIndex]?.en || '?'; if (userAnswerIndex === correctAnswerIndex) { status = "correct"; correctCount++; } else { status = "incorrect"; incorrectCount++; } } else if (userAnswerIndex !== null) { // Handle potential invalid index (though shouldn't happen with radio buttons) userAnswerTextEn = "Invalid"; status = "incorrect"; incorrectCount++; } else { // userAnswerIndex is null skippedCount++; } reviewQuestions.push({ question: questionData.question?.en || '?', // Store English base for consistency correctAnswer: correctAnswerTextEn, userAnswer: userAnswerTextEn, status: status, explanation: questionData.explanation?.en || "N/A" // Store English base }); }); const totalQuestions = mcqs.length; const scoreString = `${correctCount}/${totalQuestions}`; const timeSeconds = Math.round(timeMs / 1000); const minutes = Math.floor(timeSeconds / 60); const seconds = timeSeconds % 60; const timeString = `${minutes}m ${seconds}s`; return { questions: reviewQuestions, // Array of simplified result objects summary: { score: scoreString, correct: correctCount, incorrect: incorrectCount, skipped: skippedCount, timeString: timeString }, testDate: new Date().toISOString(), // ISO string for Firestore timeTakenMs: timeMs, sourceChatId: activeChatId, // Link back to the chat where test was started testTitle: testTitle.textContent, // Get title from the test view header originalMCQs: mcqs // Keep the full original MCQ data with translations }; }
+        function displayReview(reviewData) { reviewContent.innerHTML = ''; reviewSummary.innerHTML = ''; reviewFilters.style.display = 'none'; // Hide filters initially if (!reviewData?.questions?.length || !reviewData.summary || !reviewData.originalMCQs) { reviewSummary.innerHTML = "<span>No review data available.</span>"; saveReviewBtn.style.display = 'none'; return; } // Set language toggle state const expectedToggleText = (currentReviewLanguage === 'en') ? 'தமிழ்' : 'English'; if (!reviewLanguageToggle || reviewLanguageToggle.textContent !== expectedToggleText) { currentReviewLanguage = 'en'; // Default to English if state is inconsistent if (reviewLanguageToggle) reviewLanguageToggle.textContent = 'தமிழ்'; } const { score, correct, incorrect, skipped, timeString } = reviewData.summary; reviewSummary.innerHTML = `<span>Score: ${score}</span> <span class="score-correct">Correct: ${correct}</span> <span class="score-incorrect">Incorrect: ${incorrect}</span> <span class="score-skipped">Skipped: ${skipped}</span> <span>Time: ${timeString}</span>`; reviewTitle.textContent = reviewData.testTitle || "Test Review"; const lang = currentReviewLanguage; // 'en' or 'ta' reviewData.questions.forEach((qSummary, index) => { const originalQuestion = reviewData.originalMCQs[index]; if (!originalQuestion) { console.warn(`Missing original MCQ data for index ${index}`); return; // Skip if original data is missing } const questionText = originalQuestion.question?.[lang] || originalQuestion.question?.en || '?'; const options = originalQuestion.options || []; const correctAnswerLetter = originalQuestion.answer?.trim().toUpperCase(); const correctAnswerIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 'A'.charCodeAt(0) : -1; const correctAnswerText = (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) ? (options[correctAnswerIndex]?.[lang] || options[correctAnswerIndex]?.en) : "N/A"; let userAnswerText = qSummary.userAnswer; // Base English text const status = qSummary.status; // Convert user answer to selected language if not skipped/invalid if (status !== 'skipped' && status !== 'invalid') { const userAnswerEn = qSummary.userAnswer; // Find the index based on the English answer stored const userAnswerIndex = options.findIndex(opt => opt.en === userAnswerEn); if (userAnswerIndex !== -1) { userAnswerText = options[userAnswerIndex]?.[lang] || options[userAnswerIndex]?.en; // Fallback to English if translation missing } else { userAnswerText = userAnswerEn || '?'; // Fallback if somehow index not found } } else if (status === 'skipped') { userAnswerText = (lang === 'ta') ? "தவிர்க்கப்பட்டது" : "Skipped"; } else { userAnswerText = (lang === 'ta') ? "தவறான தேர்வு" : "Invalid"; } const explanationText = originalQuestion.explanation?.[lang] || originalQuestion.explanation?.en || "No explanation provided."; let itemStatusClass = `status-${status}`; let answerDetailClass = `user-answer-${status}`; const reviewItem = document.createElement('div'); reviewItem.classList.add('review-item', itemStatusClass); reviewItem.dataset.status = status; // For filtering let detailsHtml = `<span class="${answerDetailClass}">Your Answer / உங்கள் பதில்: ${userAnswerText}</span>`; if (status !== 'correct') { detailsHtml += `<br><span class="correct-answer">Correct Answer / சரியான பதில்: ${correctAnswerText}</span>`; } detailsHtml += `<div class="review-item-explanation">Explanation / விளக்கம்: ${explanationText}</div>`; reviewItem.innerHTML = `<div class="review-item-qnum">Question ${index + 1}</div> <div class="review-item-question">${questionText}</div> <div class="review-item-details">${detailsHtml}</div>`; reviewContent.appendChild(reviewItem); }); // Show filters if there are incorrect or skipped answers if (incorrect > 0 || skipped > 0) { reviewFilters.style.display = 'block'; } else { reviewFilters.style.display = 'none'; } // Update Save button state if (reviewData.savedAt) { // Check if already saved (e.g., loading from sidebar) saveReviewBtn.textContent = "Saved / சேமிக்கப்பட்டது"; saveReviewBtn.disabled = true; saveReviewBtn.style.display = 'inline-block'; } else if (reviewResultsCache && !cameFromAllTestsList) { // If just finished test and not viewing from list saveReviewBtn.textContent = "Save Review / மதிப்பாய்வைச் சேமி"; saveReviewBtn.disabled = !currentUser; // Can only save if logged in saveReviewBtn.style.display = 'inline-block'; } else { // Viewing from list, don't show save button saveReviewBtn.style.display = 'none'; } // Activate 'All' filter by default filterReviewItems('all'); reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === 'all'); }); // Render MathJax if needed try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([reviewContent]).catch(err=>console.error('MathJax Review Error:', err)); } } catch (e) { console.error("MathJax call failed in review:", e); } }
+        function handleReviewFilterClick(event) { const button = event.target.closest('button[data-filter]'); if (button) { filterReviewItems(button.dataset.filter); } }
+        function filterReviewItems(filter) { reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === filter); }); reviewContent.querySelectorAll('.review-item').forEach(item => { const show = (filter === 'all') || item.dataset.status === filter; item.classList.toggle('hidden-by-filter', !show); }); }
+        function exitReview() { reviewResultsCache = null; // Clear cache switchView('chat'); // Go back to chat view // Reset review UI elements reviewSummary.innerHTML = ''; reviewContent.innerHTML = ''; reviewTitle.textContent = 'Review'; if (reviewLanguageToggle) reviewLanguageToggle.textContent = 'தமிழ்'; // Reset language toggle currentReviewLanguage = 'en'; }
+        async function saveTestReviewToCloud() { if (!currentUser) { alert("Please log in to save the review.\nமதிப்பாய்வைச் சேமிக்க உள்நுழையவும்."); return; } if (!reviewResultsCache || reviewResultsCache.savedAt) { alert("No new review data to save or already saved.\nசேமிக்க புதிய மதிப்பாய்வுத் தரவு இல்லை அல்லது ஏற்கனவே சேமிக்கப்பட்டது."); return; } // Sanity check for essential data if (!reviewResultsCache.originalMCQs?.length || !reviewResultsCache.summary) { if (!confirm("Warning: Review data seems incomplete. Save anyway?\nஎச்சரிக்கை: மதிப்பாய்வுத் தரவு முழுமையற்றதாகத் தெரிகிறது. எப்படியும் சேமிக்கவா?")) { return; } } const dataToSave = { ...reviewResultsCache, userId: currentUser.uid, // Ensure userId is included savedAt: firebase.firestore.FieldValue.serverTimestamp(), // Add saved timestamp }; saveReviewBtn.disabled = true; saveReviewBtn.textContent = "Saving... / சேமிக்கிறது..."; try { const newReviewRef = await db.collection('testReviews').add(dataToSave); console.log("Review saved successfully:", newReviewRef.id); alert("Review saved! / மதிப்பாய்வு சேமிக்கப்பட்டது!"); saveReviewBtn.textContent = "Saved / சேமிக்கப்பட்டது"; if (reviewResultsCache) reviewResultsCache.savedAt = new Date(); // Mark cache as saved (using client date) } catch (error) { console.error("Error saving review:", error); alert("Failed to save review.\nமதிப்பாய்வைச் சேமிக்க முடியவில்லை."); saveReviewBtn.disabled = false; // Re-enable on error saveReviewBtn.textContent = "Save Review / மதிப்பாய்வைச் சேமி"; } }
+
+
+        // --- All Tests List Functions ---
+        // (No changes needed here, copy from previous version)
+        function loadAndListenForTests(userId) { if (testListListener) { testListListener(); testListListener = null; } const testsRef = db.collection('testReviews').where('userId', '==', userId).orderBy('savedAt', 'desc'); console.log(`Listening for saved tests for user ${userId}`); testListListener = testsRef.onSnapshot(snapshot => { allSavedTestsData = []; snapshot.forEach(doc => { allSavedTestsData.push({ id: doc.id, ...doc.data() }); }); console.log("Received saved tests snapshot:", allSavedTestsData.length, "tests"); renderAllTestsList(allSavedTestsData); filterTestsInSidebar(); // Apply current filter if any }, error => { console.error("Error listening for saved tests:", error); allTestsListContainer.innerHTML = `<div style="padding:10px; color:var(--error-text);">Error loading saved tests.</div>`; allSavedTestsData = []; }); }
+        function renderAllTestsList(tests) { allTestsListContainer.innerHTML = ''; if (!currentUser) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Login to see tests.</div>'; return; } if (tests.length === 0) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No saved tests found.</div>'; } else { tests.forEach(testData => { const item = document.createElement('div'); item.classList.add('test-list-item'); item.dataset.reviewId = testData.id; const title = testData.testTitle || '(Untitled Test)'; const date = testData.savedAt?.toDate ? testData.savedAt.toDate().toLocaleString() : 'Unknown date'; const score = testData.summary?.score || 'N/A'; // Check if reattempt is possible (basic check for originalMCQs) const hasReattemptData = testData.originalMCQs?.length > 0 && testData.originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); const infoDiv = document.createElement('div'); infoDiv.classList.add('test-item-info'); const titleSpan = document.createElement('span'); titleSpan.classList.add('test-item-title'); titleSpan.textContent = title; titleSpan.title = title; // Tooltip for long titles const detailSpan = document.createElement('span'); detailSpan.classList.add('test-item-details'); detailSpan.textContent = `Saved: ${date} | Score: ${score}`; const controlsDiv = document.createElement('div'); controlsDiv.classList.add('test-item-controls'); const editButton = document.createElement('button'); editButton.innerHTML = EDIT_TEST_ICON; editButton.title = "Edit title"; editButton.dataset.action = "edit-title"; controlsDiv.appendChild(editButton); const deleteButton = document.createElement('button'); deleteButton.innerHTML = DELETE_TEST_ICON; deleteButton.title = "Delete test"; deleteButton.dataset.action = "delete-test"; controlsDiv.appendChild(deleteButton); infoDiv.appendChild(titleSpan); infoDiv.appendChild(detailSpan); infoDiv.appendChild(controlsDiv); const actionsDiv = document.createElement('div'); actionsDiv.classList.add('test-item-actions'); const viewButton = document.createElement('button'); viewButton.textContent = "Details / விவரங்கள்"; viewButton.dataset.action = "view"; actionsDiv.appendChild(viewButton); const reattemptSelect = document.createElement('select'); reattemptSelect.dataset.action = "reattempt"; reattemptSelect.disabled = !hasReattemptData; reattemptSelect.title = hasReattemptData ? "Reattempt test / மீண்டும் சோதனை செய்" : "Reattempt data not available"; reattemptSelect.innerHTML = `<option value="" selected>${hasReattemptData ? 'Reattempt... / மீண்டும்...' : 'N/A'}</option> <option value="mistaked" ${!hasReattemptData?'disabled':''}>Mistaked Only / தவறுகள் மட்டும்</option> <option value="skipped" ${!hasReattemptData?'disabled':''}>Skipped Only / தவிர்க்கப்பட்டவை மட்டும்</option> <option value="both" ${!hasReattemptData?'disabled':''}>Mistaked/Skipped / தவறு/தவிர்க்கப்பட்டவை</option> <option value="full" ${!hasReattemptData?'disabled':''}>Full Test / முழு சோதனை</option>`; // Add event listener for reattempt selection reattemptSelect.addEventListener('change', (e) => { const selectedMode = e.target.value; if (selectedMode) { const reviewId = e.target.closest('.test-list-item')?.dataset.reviewId; if (reviewId) { startReattempt(reviewId, selectedMode); } e.target.value = ""; // Reset select after action } }); actionsDiv.appendChild(reattemptSelect); item.appendChild(infoDiv); item.appendChild(actionsDiv); allTestsListContainer.appendChild(item); }); } }
+        function filterTestsInSidebar() { const searchTerm = testSearchInput.value.toLowerCase().trim(); const items = allTestsListContainer.querySelectorAll('.test-list-item'); let visibleCount = 0; const noResultsMsg = allTestsListContainer.querySelector('.no-search-results'); if (noResultsMsg) { noResultsMsg.remove(); } items.forEach(item => { const title = item.querySelector('.test-item-title')?.textContent.toLowerCase() || ''; const details = item.querySelector('.test-item-details')?.textContent.toLowerCase() || ''; const isMatch = title.includes(searchTerm) || details.includes(searchTerm); item.classList.toggle('hidden-by-search', !isMatch); if (isMatch) visibleCount++; }); if (visibleCount === 0 && searchTerm !== '' && items.length > 0) { const msgDiv = document.createElement('div'); msgDiv.textContent = "No saved tests match your search."; msgDiv.classList.add('no-search-results'); allTestsListContainer.appendChild(msgDiv); } }
+        async function handleAllTestsListClick(event) { const button = event.target.closest('button[data-action]'); if (!button) return; // Ignore clicks not on a button with action const action = button.dataset.action; const listItem = button.closest('.test-list-item'); const reviewId = listItem?.dataset.reviewId; if (!reviewId) { console.error("Could not find review ID for action:", action); return; } switch (action) { case "view": const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (reviewData) { reviewResultsCache = reviewData; // Load the data into cache switchView('review', true); // Switch to review view, indicating came from list displayReview(reviewData); // Display the loaded data } else { alert("Error: Could not find review data to display."); } break; case "edit-title": enterTestTitleEditMode(listItem, reviewId); break; case "delete-test": const testTitle = listItem.querySelector('.test-item-title')?.textContent || 'this test'; if (confirm(`Are you sure you want to delete the test "${testTitle}"?\n"${testTitle}" என்ற சோதனையை நீக்க விரும்புகிறீர்களா?`)) { deleteSavedTest(reviewId, listItem); } break; // Note: Reattempt is handled by the select element's change listener } }
+        function enterTestTitleEditMode(listItem, reviewId) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const currentTitle = titleSpan.textContent; // Hide original elements titleSpan.style.display = 'none'; detailSpan.style.display = 'none'; if(controlsDiv) controlsDiv.style.display = 'none'; // Prevent multiple edit modes if (infoDiv.querySelector('.test-item-edit-mode')) return; const editContainer = document.createElement('div'); editContainer.classList.add('test-item-edit-mode'); const input = document.createElement('input'); input.type = 'text'; input.value = currentTitle; input.maxLength = 100; input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { saveTestTitle(listItem, reviewId, input.value); } else if (e.key === 'Escape') { exitTestTitleEditMode(listItem, currentTitle); } }); const saveButton = document.createElement('button'); saveButton.textContent = 'Save'; saveButton.onclick = () => saveTestTitle(listItem, reviewId, input.value); const cancelButton = document.createElement('button'); cancelButton.textContent = 'Cancel'; cancelButton.onclick = () => exitTestTitleEditMode(listItem, currentTitle); editContainer.appendChild(input); editContainer.appendChild(saveButton); editContainer.appendChild(cancelButton); infoDiv.appendChild(editContainer); input.focus(); input.select(); }
+        function exitTestTitleEditMode(listItem, originalTitle = null) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const editContainer = infoDiv.querySelector('.test-item-edit-mode'); // Remove edit container if it exists if (editContainer) editContainer.remove(); // Restore original title if provided if (originalTitle !== null && titleSpan) { titleSpan.textContent = originalTitle; titleSpan.title = originalTitle; } // Show original elements if(titleSpan) titleSpan.style.display = ''; if(detailSpan) detailSpan.style.display = ''; if(controlsDiv) controlsDiv.style.display = ''; }
+        async function saveTestTitle(listItem, reviewId, newTitle) { const trimmedTitle = newTitle.trim(); if (!trimmedTitle) { alert("Test title cannot be empty.\nசோதனைத் தலைப்பு காலியாக இருக்கக்கூடாது."); return; } if (trimmedTitle.length > 100) { alert("Test title is too long (max 100 characters).\nசோதனைத் தலைப்பு மிகவும் நீளமானது (அதிகபட்சம் 100 எழுத்துக்கள்)."); return; } const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.update({ testTitle: trimmedTitle }); console.log("Test title updated successfully:", reviewId); const titleSpan = listItem.querySelector('.test-item-title'); if (titleSpan) { titleSpan.textContent = trimmedTitle; titleSpan.title = trimmedTitle; } // Update local cache as well const testIndex = allSavedTestsData.findIndex(t => t.id === reviewId); if (testIndex > -1) allSavedTestsData[testIndex].testTitle = trimmedTitle; exitTestTitleEditMode(listItem); // Exit edit mode } catch (error) { console.error("Error updating test title:", error); alert("Failed to update test title.\nசோதனைத் தலைப்பைப் புதுப்பிக்க முடியவில்லை."); } }
+        async function deleteSavedTest(reviewId, listItem) { if (!currentUser || !reviewId) return; // Visually indicate deletion attempt listItem.style.opacity = '0.5'; listItem.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.delete(); console.log("Saved test deleted successfully:", reviewId); // Remove from local cache immediately allSavedTestsData = allSavedTestsData.filter(t => t.id !== reviewId); // No need to re-render entire list, listener will handle removal alert("Saved test deleted. / சேமிக்கப்பட்ட சோதனை நீக்கப்பட்டது."); // Listener will remove the element from UI } catch (error) { console.error("Error deleting saved test:", error); alert("Failed to delete saved test.\nசேமிக்கப்பட்ட சோதனையை நீக்க முடியவில்லை."); // Restore appearance on error listItem.style.opacity = '1'; listItem.style.pointerEvents = 'auto'; } }
+        async function startReattempt(reviewId, mode) { console.log(`Attempting reattempt for review ID: ${reviewId}, Mode: ${mode}`); const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (!reviewData) { alert("Error: Could not find the saved review data for reattempt."); return; } const originalMCQs = reviewData.originalMCQs; const hasValidData = originalMCQs?.length > 0 && originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); if (!hasValidData) { alert("Error: Cannot reattempt. Original test data is missing or invalid."); return; } const summaryQuestions = reviewData.questions || []; // Simplified results let questionsForReattempt = []; switch (mode) { case 'mistaked': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect'); break; case 'skipped': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'skipped'); break; case 'both': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect' || summaryQuestions[index]?.status === 'skipped'); break; case 'full': default: questionsForReattempt = [...originalMCQs]; break; } if (questionsForReattempt.length === 0) { alert(`No questions found for the selected reattempt mode ('${mode}').\nதேர்ந்தெடுக்கப்பட்ட மறுமுயற்சி முறைக்கு ('${mode}') கேள்விகள் எதுவும் இல்லை.`); return; } // Construct a new title for the reattempt const originalTitle = reviewData.testTitle || 'Test'; const reattemptTitle = `${originalTitle} (Reattempt: ${mode})`; // Start the mock test with the filtered questions startMockTest(questionsForReattempt, reattemptTitle); }
+
+
+    </script>
+
+</body>
+</html>
