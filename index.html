@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Version Updated -->
-    <title>Gemini Chat + Mock Test (v9.4 - Audio Input)</title>
+    <title>Gemini Chat + Mock Test (v9.5 - Audio Fixes)</title>
     <script>
         window.MathJax = {
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
@@ -20,8 +20,8 @@
     <!-- <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script> -->
 
     <style>
-        /* --- Styles (v9.4 - Audio Feature Styles Added) --- */
-        /* Styles from v9.3 should be mostly sufficient */
+        /* --- Styles (v9.5 - Minor adjustments if needed) --- */
+        /* Styles from v9.4 should be mostly sufficient */
         :root { /* ... Theme Variables ... */
              --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; --sidebar-width: 260px; --message-font-size-base: 1rem;
             /* LIGHT */ --sidebar-bg: #f7f7f7; --main-bg: #ffffff; --input-bg: #ffffff; --border-color: #e0e0e0; --text-primary: #2c2c2c; --text-secondary: #5f5f5f; --text-placeholder: #999999; --accent-color: #d97a7a; --user-message-bg: #cce0ff; --user-message-text: #1c1c1c; --ai-message-bg: #f0f0f0; --ai-message-text: #2c2c2c; --button-bg: #f0f0f0; --button-hover-bg: #e0e0e0; --active-item-bg: #e0e0e0; --code-bg: #e8e8e8; --scrollbar-thumb: #ccc; --scrollbar-thumb-hover: #bbb; --app-outer-bg: #e8e8e8; --send-button-bg: var(--accent-color); --send-button-hover-bg: #c76b6b; --send-button-text: #ffffff; --error-bg: #ffebee; --error-text: #c62828; --error-border: #ef9a9a; --message-font-size: var(--message-font-size-base); --delete-button-color: #aaa; --delete-button-hover-color: #dc3545; --input-border-color: var(--border-color); --input-focus-border-color: var(--accent-color); --preview-bg: var(--button-bg); --preview-border: var(--border-color); --remove-btn-color: var(--text-secondary); --remove-btn-hover-color: var(--error-text);
@@ -60,7 +60,7 @@
          .test-item-info { font-size: 0.9em; color: var(--text-primary); position: relative; padding-right: 50px; }
          .test-item-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
          .test-item-details { font-size: 0.8em; color: var(--text-secondary); }
-         .test-item-actions { display: flex; justify-content: flex-start; gap: 8px; }
+         .test-item-actions { display: flex; justify-content: flex-start; gap: 8px; margin-top: 5px; /* Add some space */ }
          .test-item-actions button, .test-item-actions select { background-color: var(--main-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
          .test-item-actions button:hover, .test-item-actions select:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
          .test-item-actions select:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -118,7 +118,7 @@
         .message img.uploaded-image { border: 1px solid var(--border-color); margin-bottom: 5px; /* Space between uploaded img and text */ }
         .message .youtube-embed-container { margin-top: 10px; }
         .message iframe.chat-video { max-width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 8px; }
-        /* NEW: Audio display in chat */
+        /* Audio display in chat */
         .message .chat-audio-player { margin-top: 10px; width: 100%; max-width: 350px; }
         .message .chat-audio-player audio { width: 100%; height: 40px; border-radius: 20px; /* Optional styling */ }
 
@@ -130,10 +130,11 @@
         .input-box:focus-within { border-color: var(--input-focus-border-color); }
         /* Input Buttons */
         .input-buttons { display: flex; align-self: center; margin-right: 5px; gap: 3px; }
-        #image-upload-button, #audio-upload-button, #record-audio-button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.4em; padding: 0 4px; line-height: 1; transition: color 0.2s ease; }
+        #image-upload-button, #audio-upload-button, #record-audio-button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.4em; padding: 0 4px; line-height: 1; transition: color 0.2s ease, opacity 0.2s ease; }
         #image-upload-button:hover, #audio-upload-button:hover, #record-audio-button:hover:not(.recording) { color: var(--text-primary); }
-        #image-upload-button:disabled, #audio-upload-button:disabled, #record-audio-button:disabled { opacity: 0.5; cursor: not-allowed; }
+        #image-upload-button:disabled, #audio-upload-button:disabled, #record-audio-button:disabled:not(.recording) { opacity: 0.5; cursor: not-allowed; color: var(--text-secondary); } /* Ensure disabled state is clear */
         #record-audio-button.recording { color: var(--record-button-bg); animation: pulse 1.5s infinite; }
+        #record-audio-button.recording:disabled { color: var(--stop-button-bg); opacity: 0.7; animation: none; cursor: default; } /* Style for disabled stop */
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
         #user-input { flex-grow: 1; border: none; outline: none; padding: 10px 5px; font-size: 1rem; background-color: transparent; resize: none; min-height: 48px; max-height: 250px; line-height: 1.5; color: var(--text-primary); font-family: var(--font-family); }
@@ -155,7 +156,7 @@
         #remove-media-button { background: none; border: none; color: var(--remove-btn-color); cursor: pointer; font-size: 1.4em; line-height: 1; padding: 0 5px; transition: color 0.2s ease; margin-left: auto; /* Push to the right */ }
         #remove-media-button:hover { color: var(--remove-btn-hover-color); }
          /* Recording Status */
-         #recording-status { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 5px; display: none; text-align: center; }
+         #recording-status { font-size: 0.85em; color: var(--text-secondary); margin-bottom: 5px; display: none; text-align: center; padding: 3px 0; }
          #recording-status.visible { display: block; }
 
         .thinking::after { content: ' .'; animation: dots 1s steps(3, end) infinite; display: inline-block; }
@@ -318,15 +319,13 @@
                     <div class="input-box">
                          <!-- Hidden File Inputs -->
                          <input type="file" id="image-upload-input" accept="image/*" style="display: none;">
-                         <!-- NEW: Audio file input -->
-                         <input type="file" id="audio-upload-input" accept="audio/wav, audio/mp3, audio/aac, audio/ogg, audio/flac, audio/aiff" style="display: none;">
+                         <!-- Audio file input -->
+                         <input type="file" id="audio-upload-input" accept="audio/wav, audio/mp3, audio/mpeg, audio/aac, audio/ogg, audio/flac, audio/aiff" style="display: none;">
 
                          <!-- Buttons -->
                          <div class="input-buttons">
                              <button id="image-upload-button" title="Upload image (Max 4MB)" disabled>📎</button>
-                             <!-- NEW: Audio upload button -->
                              <button id="audio-upload-button" title="Upload audio file (Max 10MB)" disabled>🎵</button>
-                             <!-- NEW: Record audio button -->
                              <button id="record-audio-button" title="Record audio" disabled>🎙️</button>
                          </div>
 
@@ -438,7 +437,7 @@
         const previewAudio = document.getElementById('preview-audio'); // Specific audio tag
         const mediaPreviewInfo = document.getElementById('media-preview-info');
         const removeMediaButton = document.getElementById('remove-media-button');
-        // NEW: Audio Elements
+        // Audio Elements
         const audioUploadButton = document.getElementById('audio-upload-button');
         const audioUploadInput = document.getElementById('audio-upload-input');
         const recordAudioButton = document.getElementById('record-audio-button');
@@ -462,7 +461,9 @@
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\S+)?/i;
         const imageUrlRegex = /(?<!src=["'])(?<!href=["'])(https?:\/\/[^\s()<>]+?\.(?:jpg|jpeg|png|gif|webp|bmp))/gi;
         const MAX_IMAGE_SIZE_MB = 4;
-        const MAX_AUDIO_SIZE_MB = 10; // Increased limit for audio inlineData (still check total request size)
+        const MAX_AUDIO_SIZE_MB = 10; // Increased limit for audio inlineData (still check total request size!)
+        // Gemini supported audio formats MIME types (as per documentation)
+        const SUPPORTED_AUDIO_MIMES = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'];
         const RECORDING_TIME_LIMIT_SECONDS = 300; // 5 minutes limit for recording
 
         // --- State Variables ---
@@ -491,12 +492,13 @@
         // Unified media state
         let selectedMediaData = { type: null, file: null, base64: null, mimeType: null, name: null }; // type: 'image' or 'audio'
 
-        // NEW: Audio Recording State
+        // Audio Recording State
         let mediaRecorder = null;
         let audioChunks = [];
         let isRecording = false;
         let recordingStartTime = null;
         let recordingTimerInterval = null;
+        let recorderStream = null; // To hold the stream for stopping tracks later
 
         // --- Initialization ---
         initializeApp();
@@ -525,11 +527,19 @@
         loginBtn.addEventListener('click', signInWithGoogle);
         logoutBtn.addEventListener('click', signOut);
         // Media Listeners
-        imageUploadButton.addEventListener('click', () => imageUploadInput.click());
+        imageUploadButton.addEventListener('click', () => {
+            if (!imageUploadButton.disabled) imageUploadInput.click();
+        });
         imageUploadInput.addEventListener('change', handleImageFileSelect);
-        audioUploadButton.addEventListener('click', () => audioUploadInput.click());
+        audioUploadButton.addEventListener('click', () => {
+            if (!audioUploadButton.disabled) audioUploadInput.click();
+        });
         audioUploadInput.addEventListener('change', handleAudioFileSelect);
-        recordAudioButton.addEventListener('click', toggleRecording);
+        recordAudioButton.addEventListener('click', () => {
+             if (!recordAudioButton.disabled || isRecording) { // Allow clicking stop even if technically 'disabled' by loading state
+                toggleRecording();
+             }
+        });
         removeMediaButton.addEventListener('click', removeSelectedMedia);
 
 
@@ -539,6 +549,7 @@
             fbAuth.onAuthStateChanged(handleAuthStateChange);
             switchView('chat');
             userInput.focus();
+            console.log("App Initialized (v9.5)");
         }
 
         function loadGeminiApiKey() {
@@ -549,7 +560,7 @@
                  if(API_KEY){ localStorage.setItem(STORAGE_KEY_API_KEY, API_KEY); console.log("Saved insecure API Key."); }
                  else { displayError("Gemini API Key is required.\nGemini API விசை தேவை."); setLoadingState(true, "API Key Missing"); }
              } else { console.log("Loaded insecure API Key."); }
-             setLoadingState(!API_KEY);
+             setLoadingState(!API_KEY); // Set loading based on key presence initially
         }
 
         // --- Authentication Functions ---
@@ -564,9 +575,14 @@
          }
 
         function handleAuthStateChange(user) {
-            if (activeChatListener) { activeChatListener(); activeChatListener = null; }
-            if (chatListListener) { chatListListener(); chatListListener = null; }
-            if (testListListener) { testListListener(); testListListener = null; }
+            console.log("Auth state changed. User:", user ? user.uid : 'None');
+            // Clear listeners and UI state
+            if (activeChatListener) { activeChatListener(); activeChatListener = null; console.log("Cleared active chat listener."); }
+            if (chatListListener) { chatListListener(); chatListListener = null; console.log("Cleared chat list listener.");}
+            if (testListListener) { testListListener(); testListListener = null; console.log("Cleared test list listener."); }
+
+            stopRecording(true); // Force stop recording if user logs out/changes
+
             chatArea.innerHTML = '';
             chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Please log in...</div>';
             allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Login to see tests.</div>';
@@ -581,34 +597,54 @@
                 accountEmail.textContent = currentUser.email || currentUser.displayName || `User`;
                 accountAvatar.textContent = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
                 accountPlan.textContent = "Firebase User";
-                startChatButton.disabled = false; decreaseTextBtn.disabled = false; increaseTextBtn.disabled = false; themeToggleButton.disabled = false; testSearchInput.disabled = false; userInput.disabled = false;
-                imageUploadButton.disabled = false; // Enable media buttons
-                audioUploadButton.disabled = false;
-                recordAudioButton.disabled = false;
-                sendButton.disabled = true; // Disabled until chat selected
-                mcqModeCheckbox.disabled = true; // Disabled until chat selected
-                userInput.placeholder = "Select or create a chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்";
-                inputContainer.style.display = 'block';
-                suggestionsContainer.style.display = 'flex';
-                allTestsSection.classList.add('visible');
-                loadUserSettings(currentUser.uid);
-                loadAndListenForChats(currentUser.uid);
-                loadAndListenForTests(currentUser.uid);
-                setLoadingState(false);
-            } else {
-                currentUser = null; console.log("User logged out");
-                loginBtn.style.display = 'inline-block'; logoutBtn.style.display = 'none';
-                accountEmail.textContent = "Not logged in"; accountAvatar.textContent = '?'; accountPlan.textContent = "";
-                startChatButton.disabled = true; decreaseTextBtn.disabled = true; increaseTextBtn.disabled = true; themeToggleButton.disabled = true; testSearchInput.disabled = true; userInput.disabled = true;
-                imageUploadButton.disabled = true; // Disable media buttons
+
+                // Enable controls that don't depend on active chat yet
+                startChatButton.disabled = false;
+                decreaseTextBtn.disabled = false;
+                increaseTextBtn.disabled = false;
+                themeToggleButton.disabled = false;
+                testSearchInput.disabled = false;
+                userInput.disabled = false; // Enable text input
+
+                // Initially disable buttons that require an active chat
+                imageUploadButton.disabled = true;
                 audioUploadButton.disabled = true;
                 recordAudioButton.disabled = true;
                 sendButton.disabled = true;
                 mcqModeCheckbox.disabled = true;
+
+                userInput.placeholder = "Select or create a chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்";
+                inputContainer.style.display = 'block';
+                suggestionsContainer.style.display = 'flex';
+                allTestsSection.classList.add('visible');
+
+                loadUserSettings(currentUser.uid);
+                loadAndListenForChats(currentUser.uid); // This will eventually enable chat-specific buttons if a chat is selected
+                loadAndListenForTests(currentUser.uid);
+                setLoadingState(false); // Initial loading done for auth check
+            } else {
+                currentUser = null; console.log("User logged out");
+                loginBtn.style.display = 'inline-block'; logoutBtn.style.display = 'none';
+                accountEmail.textContent = "Not logged in"; accountAvatar.textContent = '?'; accountPlan.textContent = "";
+
+                // Disable all controls
+                startChatButton.disabled = true;
+                decreaseTextBtn.disabled = true;
+                increaseTextBtn.disabled = true;
+                themeToggleButton.disabled = true;
+                testSearchInput.disabled = true;
+                userInput.disabled = true;
+                imageUploadButton.disabled = true;
+                audioUploadButton.disabled = true;
+                recordAudioButton.disabled = true;
+                sendButton.disabled = true;
+                mcqModeCheckbox.disabled = true;
+
                 userInput.placeholder = "Please log in / உள்நுழையவும்";
                 inputContainer.style.display = 'none';
                 suggestionsContainer.style.display = 'none';
                 allTestsSection.classList.remove('visible');
+
                 renderGreetingOrLoginPrompt();
                 currentTheme = 'light'; applyTheme();
                 currentTextSizeMultiplier = 1.0; applyTextSize();
@@ -636,7 +672,7 @@
          }
 
         // --- Settings (Theme/Text Size) ---
-        // No changes needed here, copy from previous version
+        // No changes needed here
         async function loadUserSettings(userId) { const userDocRef = db.collection('users').doc(userId); try { const docSnap = await userDocRef.get(); if (docSnap.exists) { const settings = docSnap.data(); currentTheme = settings.theme || 'light'; currentTextSizeMultiplier = settings.textSizeMultiplier || 1.0; console.log("Loaded user settings:", settings); } else { console.log("No user settings found, using defaults."); currentTheme = 'light'; currentTextSizeMultiplier = 1.0; await saveUserSettings(); } } catch (error) { console.error("Error loading user settings:", error); currentTheme = 'light'; currentTextSizeMultiplier = 1.0; } applyTheme(); applyTextSize(); }
         async function saveUserSettings() { if (!currentUser) return; const userDocRef = db.collection('users').doc(currentUser.uid); const settings = { theme: currentTheme, textSizeMultiplier: currentTextSizeMultiplier }; try { await userDocRef.set(settings, { merge: true }); console.log("User settings saved:", settings); } catch (error) { console.error("Error saving user settings:", error); } }
         function applyTheme() { if(currentTheme==='dark'){ document.body.classList.add('dark-theme'); themeToggleButton.textContent=LIGHT_THEME_ICON; themeToggleButton.title="Switch to Light Theme"; } else { document.body.classList.remove('dark-theme'); themeToggleButton.textContent=DARK_THEME_ICON; themeToggleButton.title="Switch to Dark Theme"; } }
@@ -646,7 +682,7 @@
 
 
         // --- Chat Storage & Loading (Firestore) ---
-        // No changes needed here, copy from previous version
+        // No changes needed here
          function loadAndListenForChats(userId) {
             if (chatListListener) { chatListListener(); chatListListener = null; }
             const chatsRef = db.collection('chats').where('userId', '==', userId).orderBy('lastUpdated', 'desc');
@@ -657,12 +693,44 @@
                 console.log("Received chat list snapshot:", chats.length, "chats");
                 renderSidebarChatList(chats);
                 let chatToLoad = null;
-                if (activeChatId && chats.some(c => c.id === activeChatId)) { chatToLoad = activeChatId; }
-                else if (chats.length > 0) { chatToLoad = chats[0].id; console.log("Active chat gone/none, selecting newest:", chatToLoad); }
-                else { activeChatId = null; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); setLoadingState(false); sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; userInput.placeholder = "Create a new chat / புதிய உரையாடலை உருவாக்கவும்"; }
-                 if (chatToLoad && chatToLoad !== activeChatId) { switchChat(chatToLoad); }
-                 else if (activeChatId) { highlightActiveChatInSidebar(); setLoadingState(false); const enable = !API_KEY; sendButton.disabled = enable; mcqModeCheckbox.disabled = enable; imageUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable;}
-                 else { setLoadingState(false); }
+                if (activeChatId && chats.some(c => c.id === activeChatId)) {
+                    chatToLoad = activeChatId; // Keep current chat if it still exists
+                } else if (chats.length > 0) {
+                    chatToLoad = chats[0].id; // Otherwise, load the newest chat
+                    console.log("Active chat gone or none selected, switching to newest:", chatToLoad);
+                } else {
+                    // No chats exist for the user
+                    activeChatId = null;
+                    if (activeChatListener) { activeChatListener(); activeChatListener = null; }
+                    renderGreetingOrLoginPrompt();
+                    setLoadingState(false);
+                    // Ensure buttons requiring active chat are disabled
+                    imageUploadButton.disabled = true;
+                    audioUploadButton.disabled = true;
+                    recordAudioButton.disabled = true;
+                    sendButton.disabled = true;
+                    mcqModeCheckbox.disabled = true;
+                    userInput.placeholder = "Create a new chat / புதிய உரையாடலை உருவாக்கவும்";
+                }
+
+                 if (chatToLoad && chatToLoad !== activeChatId) {
+                     switchChat(chatToLoad);
+                 } else if (activeChatId) {
+                     // Chat is already active and loaded (or was just loaded by switchChat)
+                     highlightActiveChatInSidebar();
+                     setLoadingState(false); // Ensure loading state is off
+                     // Enable buttons now that a chat is active
+                     const enable = !API_KEY; // Still disable if API key missing
+                     imageUploadButton.disabled = enable;
+                     audioUploadButton.disabled = enable;
+                     recordAudioButton.disabled = enable;
+                     sendButton.disabled = enable;
+                     mcqModeCheckbox.disabled = enable;
+                     userInput.placeholder = "Enter prompt, attach media, or paste URL\nஉள்ளீட்டை உள்ளிடவும், மீடியாவை இணைக்கவும், அல்லது URL ஐ ஒட்டவும்";
+                 } else {
+                     // No chats and none loading
+                     setLoadingState(false);
+                 }
             }, error => { console.error("Error listening for chats:", error); displayError("Could not load chat list.\nஉரையாடல் பட்டியலை ஏற்ற முடியவில்லை."); chatListContainer.innerHTML = '<div style="padding:10px;color:var(--error-text);">Error loading chats.</div>'; setLoadingState(false); });
         }
         function renderSidebarChatList(chats) {
@@ -677,13 +745,17 @@
         // --- Media Handling Functions (Unified Image & Audio) ---
 
         /**
-         * Handles selection of an image file.
-         * படக் கோப்புத் தேர்வைக் கையாளுகிறது.
+         * Handles selection of an image file. Ensures exclusivity.
+         * படக் கோப்புத் தேர்வைக் கையாளுகிறது. ஒன்றைத் தேர்ந்தெடுப்பதை உறுதி செய்கிறது.
          */
         function handleImageFileSelect(event) {
+            console.log("handleImageFileSelect triggered");
+            removeSelectedMedia(); // Clear any previous media first
+
             const file = event.target.files[0];
             if (!file) {
-                removeSelectedMedia();
+                console.log("No image file selected.");
+                imageUploadInput.value = ''; // Reset input
                 return;
             }
 
@@ -691,7 +763,6 @@
             if (!allowedTypes.includes(file.type)) {
                 alert(`Invalid file type. Please select an image.\nதவறான கோப்பு வகை. ஒரு படத்தைத் தேர்ந்தெடுக்கவும்.`);
                 imageUploadInput.value = ''; // Reset input
-                removeSelectedMedia();
                 return;
             }
 
@@ -699,13 +770,7 @@
             if (fileSizeMB > MAX_IMAGE_SIZE_MB) {
                 alert(`Image too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_IMAGE_SIZE_MB}MB.\nபடம் மிகவும் பெரியது (${fileSizeMB.toFixed(1)}MB). அதிகபட்சம் ${MAX_IMAGE_SIZE_MB}MB.`);
                 imageUploadInput.value = ''; // Reset input
-                removeSelectedMedia();
                 return;
-            }
-
-            // Remove any existing audio before processing image
-            if (selectedMediaData.type === 'audio') {
-                removeSelectedMedia();
             }
 
             const reader = new FileReader();
@@ -717,35 +782,35 @@
                     mimeType: file.type,
                     name: file.name
                 };
-                console.log("Image selected:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
+                console.log("Image selected and read:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
                 displayMediaPreview();
             }
             reader.onerror = (error) => {
-                console.error("Error reading file:", error);
+                console.error("Error reading image file:", error);
                 alert("Error reading image file.\nபடக் கோப்பைப் படிப்பதில் பிழை.");
-                removeSelectedMedia();
+                removeSelectedMedia(); // Clean up state on error
             };
             reader.readAsDataURL(file);
         }
 
         /**
-         * Handles selection of an audio file.
-         * ஒலிக் கோப்புத் தேர்வைக் கையாளுகிறது.
+         * Handles selection of an audio file. Ensures exclusivity.
+         * ஒலிக் கோப்புத் தேர்வைக் கையாளுகிறது. ஒன்றைத் தேர்ந்தெடுப்பதை உறுதி செய்கிறது.
          */
         function handleAudioFileSelect(event) {
+            console.log("handleAudioFileSelect triggered");
+            removeSelectedMedia(); // Clear any previous media first
+
             const file = event.target.files[0];
             if (!file) {
-                removeSelectedMedia();
+                console.log("No audio file selected.");
+                audioUploadInput.value = ''; // Reset input
                 return;
             }
 
-            // Gemini supported audio formats MIME types
-            const allowedTypes = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'];
-             // Add audio/mpeg for mp3
-            if (!allowedTypes.includes(file.type)) {
+            if (!SUPPORTED_AUDIO_MIMES.includes(file.type)) {
                 alert(`Unsupported audio file type: ${file.type}. Please select WAV, MP3, AIFF, AAC, OGG, or FLAC.\nஆதரிக்கப்படாத ஒலி கோப்பு வகை: ${file.type}. WAV, MP3, AIFF, AAC, OGG, அல்லது FLAC ஐத் தேர்ந்தெடுக்கவும்.`);
                 audioUploadInput.value = ''; // Reset input
-                removeSelectedMedia();
                 return;
             }
 
@@ -753,31 +818,25 @@
             if (fileSizeMB > MAX_AUDIO_SIZE_MB) {
                 alert(`Audio file too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB for upload.\nஒலி கோப்பு மிகவும் பெரியது (${fileSizeMB.toFixed(1)}MB). பதிவேற்றத்திற்கு அதிகபட்சம் ${MAX_AUDIO_SIZE_MB}MB.`);
                 audioUploadInput.value = ''; // Reset input
-                removeSelectedMedia();
                 return;
-            }
-
-            // Remove any existing image before processing audio
-            if (selectedMediaData.type === 'image') {
-                removeSelectedMedia();
             }
 
             const reader = new FileReader();
             reader.onload = (e) => {
                 selectedMediaData = {
                     type: 'audio',
-                    file: file, // Keep file for potential future use (e.g., File API)
+                    file: file,
                     base64: e.target.result, // base64 includes the data URL prefix
                     mimeType: file.type,
                     name: file.name
                 };
-                console.log("Audio selected:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
+                console.log("Audio selected and read:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
                 displayMediaPreview();
             }
             reader.onerror = (error) => {
                 console.error("Error reading audio file:", error);
                 alert("Error reading audio file.\nஒலி கோப்பைப் படிப்பதில் பிழை.");
-                removeSelectedMedia();
+                removeSelectedMedia(); // Clean up state on error
             };
             reader.readAsDataURL(file);
         }
@@ -787,6 +846,7 @@
          * தேர்ந்தெடுக்கப்பட்ட மீடியாவுக்கான (படம் அல்லது ஒலி) மாதிரிக்காட்சியைக் காட்டுகிறது.
          */
         function displayMediaPreview() {
+            console.log("displayMediaPreview called. Type:", selectedMediaData.type);
             if (!selectedMediaData.type) {
                 mediaPreviewContainer.style.display = 'none';
                 return;
@@ -795,38 +855,45 @@
             // Hide both previews initially
             previewImage.style.display = 'none';
             previewAudioContainer.style.display = 'none';
+            previewImage.src = '#'; // Clear image src
+            previewAudio.removeAttribute('src'); // Clear audio src fully
 
             mediaPreviewInfo.textContent = selectedMediaData.name || 'Unknown file';
 
             if (selectedMediaData.type === 'image' && selectedMediaData.base64) {
                 previewImage.src = selectedMediaData.base64;
                 previewImage.style.display = 'block'; // Show image preview
+                 console.log("Showing image preview for:", selectedMediaData.name);
             } else if (selectedMediaData.type === 'audio' && selectedMediaData.base64) {
+                 console.log("Setting audio preview src for:", selectedMediaData.name);
                 previewAudio.src = selectedMediaData.base64;
-                previewAudio.load(); // Ensure controls are updated
+                previewAudio.load(); // Important to load the new source
                 previewAudioContainer.style.display = 'flex'; // Show audio preview container
-                // Note: Browser might not be able to play all types listed, but we need the data for the API
+                console.log("Showing audio preview for:", selectedMediaData.name);
+                // Note: Browser might not be able to play all types listed (e.g., AIFF), but we need the data for the API. Preview playback is best-effort.
             }
 
             mediaPreviewContainer.style.display = 'flex'; // Show the main preview container
         }
 
         /**
-         * Removes the currently selected media (image or audio).
-         * தற்போது தேர்ந்தெடுக்கப்பட்ட மீடியாவை (படம் அல்லது ஒலி) நீக்குகிறது.
+         * Removes the currently selected media (image or audio) and stops recording if active.
+         * தற்போது தேர்ந்தெடுக்கப்பட்ட மீடியாவை நீக்குகிறது மற்றும் பதிவு செயலில் இருந்தால் அதை நிறுத்துகிறது.
          */
         function removeSelectedMedia() {
+            console.log("removeSelectedMedia called.");
+            stopRecording(true); // Force stop recording if active
+
             selectedMediaData = { type: null, file: null, base64: null, mimeType: null, name: null };
             mediaPreviewContainer.style.display = 'none';
             previewImage.src = '#';
-            previewAudio.src = '';
-            previewAudio.removeAttribute('src'); // Make sure it's fully cleared
             previewImage.style.display = 'none';
+            previewAudio.removeAttribute('src'); // Ensure src is cleared
             previewAudioContainer.style.display = 'none';
             mediaPreviewInfo.textContent = '';
             imageUploadInput.value = ''; // Reset file inputs
             audioUploadInput.value = '';
-            console.log("Selected media removed.");
+            console.log("Selected media removed and inputs reset.");
         }
 
         // --- Audio Recording Functions ---
@@ -836,9 +903,24 @@
          * ஒலிப் பதிவை ஆன் அல்லது ஆஃப் செய்கிறது.
          */
         async function toggleRecording() {
+            console.log("toggleRecording called. isRecording:", isRecording);
             if (isRecording) {
                 stopRecording();
             } else {
+                // Check if app is busy before starting
+                if (sendButton.disabled && !isRecording) { // Check if loading/sending/key missing
+                    const isDisabledByLoading = !currentUser || !API_KEY || !activeChatId; // Basic checks
+                     if (isDisabledByLoading) {
+                         console.warn("Cannot start recording: App state prevents it (login/key/chat).");
+                         return;
+                     }
+                     // Add more specific check if needed based on placeholder or another state variable if setLoadingState isn't enough
+                     if (userInput.placeholder.includes("Generating") || userInput.placeholder.includes("Sending")) {
+                          console.warn("Cannot start recording: App is currently busy.");
+                          alert("Please wait for the current action to complete before recording.");
+                          return;
+                     }
+                }
                 await startRecording();
             }
         }
@@ -848,46 +930,69 @@
          * MediaRecorder API ஐப் பயன்படுத்தி ஒலிப் பதிவைத் தொடங்குகிறது.
          */
         async function startRecording() {
+            console.log("Attempting to start recording...");
+            removeSelectedMedia(); // Ensure no other media is selected
+
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 alert("Audio recording is not supported by your browser.\nஉங்கள் உலாவியால் ஒலிப் பதிவு ஆதரிக்கப்படவில்லை.");
+                console.error("getUserMedia not supported.");
                 return;
             }
-            if (selectedMediaData.type) {
-                alert("Please remove the selected image or audio file before recording.\nபதிவு செய்வதற்கு முன், தேர்ந்தெடுக்கப்பட்ட படம் அல்லது ஒலி கோப்பை அகற்றவும்.");
-                return;
-            }
+            // No need to check selectedMediaData.type here as removeSelectedMedia() was called
 
             try {
-                // Request microphone access
+                console.log("Requesting microphone access...");
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recordAudioButton.disabled = true; // Disable while initializing
+                recorderStream = stream; // Store stream to stop tracks later
+                console.log("Microphone access granted.");
+                recordAudioButton.disabled = true; // Temporarily disable while initializing recorder
 
-                // Prefer 'audio/ogg;codecs=opus' or 'audio/webm;codecs=opus' if available, fallback
-                const options = { mimeType: 'audio/ogg;codecs=opus' };
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    console.log(`${options.mimeType} not supported, trying audio/webm`);
-                    options.mimeType = 'audio/webm;codecs=opus';
-                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                         console.log(`${options.mimeType} not supported, trying default`);
-                         delete options.mimeType; // Use browser default
+                // --- MIME Type Selection ---
+                let options = {};
+                const preferredMimeTypes = [
+                    'audio/ogg;codecs=opus', // Often good quality/compression
+                    'audio/webm;codecs=opus',
+                    'audio/mp4', // Check if supported (might need codecs=aac)
+                    'audio/aac', // Less common for recording but supported by Gemini
+                    // Add more types if needed, but keep it simple
+                ];
+                 // Find the first supported preferred type
+                for (const mimeType of preferredMimeTypes) {
+                    if (MediaRecorder.isTypeSupported(mimeType)) {
+                        options.mimeType = mimeType;
+                        break;
                     }
                 }
+                 // If no preferred type is supported, let the browser choose (might be WAV or similar)
+                 if (!options.mimeType) {
+                     console.warn("No preferred MIME type supported, using browser default.");
+                 }
+                 // --- End MIME Type Selection ---
+
 
                 mediaRecorder = new MediaRecorder(stream, options);
                 const actualMimeType = mediaRecorder.mimeType; // Get the actual mimeType being used
-                console.log("Using MIME type for recording:", actualMimeType);
+                console.log("Initializing MediaRecorder. Options:", options, "Actual MIME type:", actualMimeType);
 
                 audioChunks = []; // Reset chunks
 
                 mediaRecorder.ondataavailable = (event) => {
                     if (event.data.size > 0) {
+                        // console.log("Audio data available, size:", event.data.size);
                         audioChunks.push(event.data);
+                    } else {
+                         console.log("Audio data available but size is 0.");
                     }
                 };
 
                 mediaRecorder.onstop = () => {
-                    // Stop all tracks in the stream to turn off the mic indicator
-                    stream.getTracks().forEach(track => track.stop());
+                    console.log("MediaRecorder stopped. Chunks collected:", audioChunks.length);
+                    // Stop all tracks in the stream to turn off the mic indicator BEFORE processing blob
+                    if (recorderStream) {
+                        recorderStream.getTracks().forEach(track => track.stop());
+                        console.log("Microphone stream tracks stopped.");
+                        recorderStream = null; // Clear the stream reference
+                    }
 
                     isRecording = false;
                     recordAudioButton.classList.remove('recording');
@@ -898,10 +1003,12 @@
                         clearInterval(recordingTimerInterval);
                         recordingTimerInterval = null;
                     }
-                    setLoadingState(false); // Re-enable buttons
+                    // Re-enable buttons via setLoadingState AFTER processing blob
+                    // setLoadingState(false); // Do this later
 
                     if (audioChunks.length === 0) {
                         console.warn("No audio data recorded.");
+                         setLoadingState(false); // Enable buttons now
                         return;
                     }
 
@@ -910,40 +1017,72 @@
                     audioChunks = []; // Clear for next recording
 
                     const fileSizeMB = audioBlob.size / 1024 / 1024;
-                    console.log(`Recording stopped. Blob size: ${fileSizeMB.toFixed(3)} MB, Type: ${actualMimeType}`);
+                    console.log(`Recording processing complete. Blob size: ${fileSizeMB.toFixed(3)} MB, Type: ${actualMimeType}`);
+
+                    if (audioBlob.size === 0) {
+                        console.warn("Created Blob has size 0.");
+                        alert("Recording failed: No audio data captured.\nபதிவு தோல்வியுற்றது: ஒலித் தரவு எதுவும் பிடிக்கப்படவில்லை.");
+                        setLoadingState(false); // Enable buttons
+                        return;
+                    }
 
                     if (fileSizeMB > MAX_AUDIO_SIZE_MB) {
                         alert(`Recorded audio too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.\nபதிவுசெய்யப்பட்ட ஒலி மிகவும் பெரியது (${fileSizeMB.toFixed(1)}MB). அதிகபட்சம் ${MAX_AUDIO_SIZE_MB}MB.`);
-                        removeSelectedMedia(); // Clear any state just in case
+                        // No need to call removeSelectedMedia as nothing was set yet
+                        setLoadingState(false); // Enable buttons
                         return;
                     }
 
                     // Convert Blob to base64 Data URL for API and preview
                     const reader = new FileReader();
                     reader.onloadend = () => {
-                        selectedMediaData = {
-                            type: 'audio',
-                            file: null, // We have the Blob, maybe store it later?
-                            base64: reader.result, // This is the Data URL
-                            mimeType: actualMimeType, // Use the actual mimeType
-                            name: `recording-${new Date().toISOString()}.ogg` // Use a default name, adjust extension based on actualMimeType if needed
-                        };
-                        displayMediaPreview();
+                         if (reader.result) {
+                            console.log("Blob successfully converted to base64 Data URL.");
+                            // Ensure the actualMimeType is compatible with Gemini
+                            // While the recording might use webm/ogg, Gemini docs list specific types.
+                            // Let's trust the browser recorded something usable, and pass its actualMimeType.
+                            // If API fails, it might be due to this type.
+                            let finalMimeType = actualMimeType;
+                            // Basic check if resulting mime type looks valid before setting state
+                            if (!finalMimeType || !reader.result.startsWith('data:')) {
+                                 console.error("Error creating valid base64 data URL.");
+                                 alert("Error processing recorded audio (Invalid data URL).\nபதிவுசெய்யப்பட்ட ஒலியைச் செயலாக்குவதில் பிழை (தவறான தரவு URL).");
+                                 setLoadingState(false);
+                                 return;
+                            }
+
+                            selectedMediaData = {
+                                type: 'audio',
+                                file: null, // We have the Blob, not the File object
+                                base64: reader.result, // This is the Data URL
+                                mimeType: finalMimeType, // Use the actual recorded mimeType
+                                // Generate a filename based on type and timestamp
+                                name: `recording-${new Date().toISOString().substring(0, 19).replace(/[:T]/g, '-')}.${finalMimeType.split('/')[1].split(';')[0] || 'audio'}`
+                            };
+                            displayMediaPreview();
+                         } else {
+                             console.error("FileReader finished but result is empty.");
+                             alert("Error processing recorded audio (Empty result).\nபதிவுசெய்யப்பட்ட ஒலியைச் செயலாக்குவதில் பிழை (வெற்று முடிவு).");
+                         }
+                         setLoadingState(false); // Enable buttons AFTER processing
                     };
                     reader.onerror = (error) => {
                          console.error("Error converting recorded audio blob to base64:", error);
                          alert("Error processing recorded audio.\nபதிவுசெய்யப்பட்ட ஒலியைச் செயலாக்குவதில் பிழை.");
+                         setLoadingState(false); // Enable buttons on error
                     };
+                    console.log("Reading Blob as Data URL...");
                     reader.readAsDataURL(audioBlob);
                 };
 
                 mediaRecorder.onerror = (event) => {
-                    console.error("MediaRecorder error:", event.error);
-                    alert(`Recording error: ${event.error.name}\nபதிவு செய்வதில் பிழை: ${event.error.name}`);
-                    stopRecording(); // Try to cleanup
+                    console.error("MediaRecorder error:", event.error || event);
+                    alert(`Recording error: ${event.error?.name || 'Unknown recorder error'}\nபதிவு செய்வதில் பிழை: ${event.error?.name || 'தெரியாத ரெக்கார்டர் பிழை'}`);
+                    stopRecording(true); // Force cleanup
                 };
 
-                // Start recording
+                // Start recording (timeslice optional, might help with memory for very long recordings)
+                // mediaRecorder.start(1000); // e.g., trigger dataavailable every second
                 mediaRecorder.start();
                 isRecording = true;
                 recordingStartTime = Date.now();
@@ -952,7 +1091,7 @@
                 recordAudioButton.title = 'Stop recording';
                 recordingStatus.classList.add('visible');
                 recordingTimerSpan.textContent = '0s';
-                setLoadingState(true, "Recording..."); // Disable other inputs
+                setLoadingState(true, "Recording..."); // Disable other inputs, but keep Stop button usable
 
                 // Start timer display and check limit
                 recordingTimerInterval = setInterval(() => {
@@ -960,68 +1099,82 @@
                     recordingTimerSpan.textContent = `${elapsedSeconds}s`;
                     if (elapsedSeconds >= RECORDING_TIME_LIMIT_SECONDS) {
                         console.log("Recording time limit reached.");
-                        stopRecording();
+                        stopRecording(); // Stop automatically
                         alert(`Recording stopped automatically after ${RECORDING_TIME_LIMIT_SECONDS} seconds.`);
                     }
                 }, 1000);
 
                 console.log("Recording started...");
-                recordAudioButton.disabled = false; // Re-enable the stop button quickly
+                recordAudioButton.disabled = false; // Ensure the stop button is immediately clickable
 
             } catch (error) {
-                console.error("Error starting recording:", error);
+                console.error("Error getting user media or starting recording:", error);
                 if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                    alert("Microphone access denied. Please allow microphone access in your browser settings.\nமைக்ரோஃபோன் அணுகல் மறுக்கப்பட்டது. உங்கள் உலாவி அமைப்புகளில் மைக்ரோஃபோன் அணுகலை அனுமதிக்கவும்.");
+                    alert("Microphone access denied. Please allow microphone access in your browser settings and refresh.\nமைக்ரோஃபோன் அணுகல் மறுக்கப்பட்டது. உங்கள் உலாவி அமைப்புகளில் மைக்ரோஃபோன் அணுகலை அனுமதித்து, பக்கத்தைப் புதுப்பிக்கவும்.");
+                } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                     alert("No microphone found. Please ensure a microphone is connected and enabled.\nமைக்ரோஃபோன் எதுவும் கண்டுபிடிக்கப்படவில்லை. மைக்ரோஃபோன் இணைக்கப்பட்டு இயக்கப்பட்டுள்ளதா என்பதை உறுதிப்படுத்தவும்.");
                 } else {
                     alert(`Could not start recording: ${error.name}\nபதிவைத் தொடங்க முடியவில்லை: ${error.name}`);
                 }
-                // Ensure cleanup if error occurs
-                isRecording = false;
-                recordAudioButton.classList.remove('recording');
-                recordAudioButton.textContent = '🎙️';
-                recordAudioButton.disabled = false;
-                recordingStatus.classList.remove('visible');
-                setLoadingState(false);
-                 if (recordingTimerInterval) clearInterval(recordingTimerInterval);
+                // Ensure cleanup if error occurs during setup
+                stopRecording(true); // Force cleanup
             }
         }
 
         /**
          * Stops the audio recording if it's active.
          * ஒலிப் பதிவு செயலில் இருந்தால் அதை நிறுத்துகிறது.
+         * @param {boolean} force - If true, bypasses some checks and forces UI reset.
          */
-        function stopRecording() {
-            if (mediaRecorder && isRecording) {
+        function stopRecording(force = false) {
+            console.log("stopRecording called. isRecording:", isRecording, "force:", force);
+            if (mediaRecorder && (isRecording || force)) {
                 try {
-                    mediaRecorder.stop(); // This will trigger the 'onstop' event handler
-                    console.log("Stopping recording...");
-                    // UI updates are handled in onstop
+                    if (mediaRecorder.state === "recording" || mediaRecorder.state === "paused") {
+                        mediaRecorder.stop(); // This will trigger the 'onstop' event handler asynchronously
+                        console.log("MediaRecorder.stop() called.");
+                        // UI updates are mostly handled in onstop
+                    } else if (force) {
+                         console.log("Recorder state is not recording/paused, but forcing cleanup.");
+                    }
                 } catch (error) {
-                     console.error("Error stopping mediaRecorder:", error);
-                     // Force cleanup if stop fails
-                     isRecording = false;
-                     recordAudioButton.classList.remove('recording');
-                     recordAudioButton.textContent = '🎙️';
-                     recordAudioButton.title = 'Record audio';
-                     recordingStatus.classList.remove('visible');
-                     if (recordingTimerInterval) clearInterval(recordingTimerInterval);
-                     setLoadingState(false);
+                     console.error("Error calling mediaRecorder.stop():", error);
+                     // Force cleanup even if stop() throws error
+                     force = true;
                 }
-            } else {
+            } else if (!force) {
                 console.log("Not recording or recorder not available.");
-                 // Ensure UI is reset if state is inconsistent
-                 isRecording = false;
+            }
+
+            // Immediate UI cleanup, especially if forced or recorder wasn't active
+             if (force || !isRecording) {
+                 isRecording = false; // Ensure flag is false
                  recordAudioButton.classList.remove('recording');
                  recordAudioButton.textContent = '🎙️';
+                 recordAudioButton.title = 'Record audio';
                  recordingStatus.classList.remove('visible');
-                 if (recordingTimerInterval) clearInterval(recordingTimerInterval);
-            }
-             mediaRecorder = null; // Clean up recorder instance
+                 if (recordingTimerInterval) {
+                     clearInterval(recordingTimerInterval);
+                     recordingTimerInterval = null;
+                     console.log("Recording timer cleared.");
+                 }
+                  // Stop stream tracks if they haven't been stopped by onstop yet
+                  if (recorderStream) {
+                     recorderStream.getTracks().forEach(track => track.stop());
+                     console.log("Microphone stream tracks stopped (force cleanup).");
+                     recorderStream = null;
+                 }
+                 mediaRecorder = null; // Clean up recorder instance
+                 audioChunks = []; // Clear any partial chunks
+                 setLoadingState(false); // Ensure UI is re-enabled
+                 console.log("Forced recording cleanup complete.");
+             }
+             // Note: setLoadingState(false) will be called again in 'onstop' after blob processing, which is fine.
         }
 
 
         // --- Chat Creation, Deletion, Switching ---
-        // (No changes needed here, copy from previous version)
+        // (No changes needed here)
         async function createNewChat() {
             if (!currentUser) { displayError("Please log in.\nஉள்நுழையவும்."); return; }
             setLoadingState(true, "Creating chat...");
@@ -1095,6 +1248,7 @@
                     chatArea.innerHTML = '';
                     renderGreetingOrLoginPrompt();
                     userInput.placeholder = "Select or create chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்";
+                    // Disable buttons needing active chat
                     sendButton.disabled = true;
                     mcqModeCheckbox.disabled = true;
                     imageUploadButton.disabled = true;
@@ -1119,7 +1273,7 @@
         function switchChat(chatId) {
              if (!currentUser || !chatId || chatId === activeChatId) return;
              console.log("Switching to chat:", chatId);
-             setLoadingState(true, "Loading chat...");
+             setLoadingState(true, "Loading chat..."); // Show loading immediately
              activeChatId = chatId;
              removeSelectedMedia(); // Clear media when switching chats
              highlightActiveChatInSidebar();
@@ -1127,16 +1281,24 @@
              autoGrowTextarea();
              mcqModeCheckbox.checked = false;
              userInput.placeholder = "Loading messages...";
-             loadAndListenForActiveChat(chatId);
+             // Disable buttons while loading new chat
+             sendButton.disabled = true;
+             mcqModeCheckbox.disabled = true;
+             imageUploadButton.disabled = true;
+             audioUploadButton.disabled = true;
+             recordAudioButton.disabled = true;
+             loadAndListenForActiveChat(chatId); // This will re-enable buttons when done
         }
 
         // --- Message Loading (Firestore) ---
+        // (No changes needed here)
         function loadAndListenForActiveChat(chatId) {
             if (!currentUser || !chatId) {
                 chatArea.innerHTML = '';
                 if (activeChatListener) { activeChatListener(); activeChatListener = null; }
                 renderGreetingOrLoginPrompt();
                 setLoadingState(false);
+                // Ensure buttons are disabled
                 sendButton.disabled = true; mcqModeCheckbox.disabled = true;
                 imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
                 return;
@@ -1175,7 +1337,6 @@
                         const role = msgData.role === 'user' ? 'user' : 'model';
 
                         // Prepare simplified history for API (text only for now)
-                        // We reconstruct parts with media just before the API call
                         currentChatHistory.push({
                             role: role,
                             parts: [{ text: text }] // Store only text for API history context
@@ -1187,11 +1348,18 @@
                 }
                 scrollToBottom(true); // Scroll after rendering
                 setLoadingState(false); // Done loading
-                const enable = !API_KEY;
-                sendButton.disabled = enable; mcqModeCheckbox.disabled = enable;
-                imageUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable;
+
+                // Enable buttons now that chat is loaded
+                const enable = !API_KEY; // Still disable if API key missing
+                sendButton.disabled = enable;
+                mcqModeCheckbox.disabled = enable;
+                imageUploadButton.disabled = enable;
+                audioUploadButton.disabled = enable;
+                recordAudioButton.disabled = enable;
                 userInput.placeholder = "Enter prompt, attach media, or paste URL\nஉள்ளீட்டை உள்ளிடவும், மீடியாவை இணைக்கவும், அல்லது URL ஐ ஒட்டவும்";
-                 if (!isTestMode && !isReviewMode) userInput.focus();
+                 if (!isTestMode && !isReviewMode) {
+                      setTimeout(() => userInput.focus(), 100); // Delay focus slightly
+                 }
 
             }, error => {
                 console.error(`Error listening messages chat ${chatId}:`, error);
@@ -1200,6 +1368,7 @@
                 chatArea.innerHTML = '';
                 currentChatHistory = [];
                 setLoadingState(false);
+                // Ensure buttons are disabled on error
                 sendButton.disabled = true; mcqModeCheckbox.disabled = true;
                 imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
                 userInput.placeholder = "Error loading chat / உரையாடலை ஏற்றுவதில் பிழை";
@@ -1207,30 +1376,35 @@
         }
 
         // --- Message Sending (Gemini API & Firestore Save) ---
+        // (Minor logging change)
         async function handleSendMessage() {
             const userMessageTextRaw = userInput.value.trim();
-            const mediaToSend = selectedMediaData.base64 ? { ...selectedMediaData } : null; // Copy current media state
+            // Make a copy of the selected media state *at the time of sending*
+            const mediaToSend = selectedMediaData.type ? { ...selectedMediaData } : null;
+
+            console.log("handleSendMessage triggered. Text:", userMessageTextRaw, "Media:", mediaToSend?.type);
 
             if (!API_KEY) { displayError("API Key not set.\nAPI விசை அமைக்கப்படவில்லை."); return; }
             if (!currentUser) { displayError("Please log in.\nஉள்நுழையவும்."); return; }
             if (!activeChatId) { displayError("Please select/create a chat.\nஒரு உரையாடலைத் தேர்ந்தெடுக்கவும்/உருவாக்கவும்."); return; }
-            if (!userMessageTextRaw && !mediaToSend) { // Allow sending media only
-                console.log("Nothing to send.");
+            // Allow sending media only, or text only, or both
+            if (!userMessageTextRaw && !mediaToSend) {
+                console.log("Nothing to send (no text and no media).");
                 return;
             }
             if (sendButton.disabled || isRecording) { // Don't send while recording
-                console.log("Send button disabled or recording active.");
+                console.log("Send button disabled or recording active. Aborting send.");
                 return;
             }
 
             const isMCQRequest = mcqModeCheckbox.checked;
             setLoadingState(true, "Sending...");
 
-            // Clear input *after* copying values
+            // Important: Clear input and preview AFTER copying values
             userInput.value = '';
             autoGrowTextarea();
             if (isMCQRequest) mcqModeCheckbox.checked = false;
-            removeSelectedMedia(); // Clear preview & state AFTER copying
+            removeSelectedMedia(); // Clear preview & state AFTER copying to mediaToSend
 
             const timestamp = firebase.firestore.FieldValue.serverTimestamp();
             const messagesColRef = db.collection('chats').doc(activeChatId).collection('messages');
@@ -1249,28 +1423,27 @@
             }
 
              // --- Prepare User Message Data for Firestore ---
-             // Store raw text, media data (if any), and YT ID (if any) for display
              const userMsgData = {
                  role: "user",
                  text: userMessageTextRaw,
                  timestamp: timestamp,
-                 ...(youtubeVideoId && { youtubeVideoId: youtubeVideoId }), // For embedding video
-                 ...(mediaToSend?.type === 'image' && { // Store image data for display
+                 ...(youtubeVideoId && { youtubeVideoId: youtubeVideoId }),
+                 ...(mediaToSend?.type === 'image' && mediaToSend.base64 && { // Store image base64 for display
                      mediaType: 'image',
-                     mediaData: mediaToSend.base64, // Store base64 for image display
+                     mediaData: mediaToSend.base64,
                      mediaMimeType: mediaToSend.mimeType
                  }),
-                 ...(mediaToSend?.type === 'audio' && { // Store audio data for display
+                 ...(mediaToSend?.type === 'audio' && mediaToSend.base64 && { // Store audio base64 for display
                      mediaType: 'audio',
-                     mediaData: mediaToSend.base64, // Store base64 for audio playback
+                     mediaData: mediaToSend.base64,
                      mediaMimeType: mediaToSend.mimeType,
                      mediaName: mediaToSend.name || 'audio_message'
                  })
              };
-             // Avoid logging large base64 strings
+             // Log without huge base64 strings
              const loggableUserMsgData = {
                 ...userMsgData,
-                ...(userMsgData.mediaData && { mediaData: `[${userMsgData.mediaType} Base64 Data (${(userMsgData.mediaData.length / 1024 / 1024 * 0.75).toFixed(2)}MB)]` }) // Estimate size
+                ...(userMsgData.mediaData && { mediaData: `[${userMsgData.mediaType} Base64 Data (${(userMsgData.mediaData?.length / 1024 / 1024 * 0.75).toFixed(2)}MB)]` })
              };
              console.log("Saving User Message to Firestore:", loggableUserMsgData);
 
@@ -1300,8 +1473,8 @@
                  }
              } catch(error) {
                  console.error("Error saving user message:", error);
-                 displayError("Failed to send message.\nசெய்தியை அனுப்ப முடியவில்லை.");
-                 setLoadingState(false); return;
+                 displayError("Failed to save message to database.\nசெய்தியை தரவுத்தளத்தில் சேமிக்க முடியவில்லை.");
+                 setLoadingState(false); return; // Stop if saving failed
              }
 
              // Display "Thinking..."
@@ -1310,11 +1483,11 @@
 
             // --- Prepare Parts for CURRENT API Call ---
             const currentUserPartsForAPI = [];
-            let userTextForPrompt = userMessageTextRaw; // Start with raw text
+            let userTextForPrompt = userMessageTextRaw;
 
             // Handle MCQ Prompt Modification
             if (isMCQRequest) {
-                 if (!userMessageTextRaw && !mediaToSend) { // Require text OR media for MCQ
+                 if (!userMessageTextRaw && !mediaToSend) {
                      displayError("Cannot generate MCQs without a text prompt or media.\nMCQ களை உருவாக்க உரை அல்லது மீடியா தேவை.");
                      removeMessageElement(thinking); setLoadingState(false); return;
                  }
@@ -1328,7 +1501,6 @@
                  potentialTestTitle = (potentialTestTitle === NEW_CHAT_TITLE || !potentialTestTitle) ? "Generated Test" : potentialTestTitle;
                  potentialTestTitle += ` (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
 
-                 // Append the MCQ request to the user's text (or use it as the text if none was provided)
                  const mcqInstructions = `\n\nPlease generate multiple choice questions based on the provided text, image, or audio. Provide the response *only* as a valid JSON array string, enclosed within \`\`\`json ... \`\`\`.
 Each object in the array must have these exact keys:
 1.  "question": An object with "en" (English question) and "ta" (Tamil question) string properties.
@@ -1345,27 +1517,29 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
                  currentUserPartsForAPI.push({ text: userTextForPrompt });
              }
 
-             // Add Media Part (Image or Audio)
+             // Add Media Part (Image or Audio) - Use the copied mediaToSend state
              if (mediaToSend && mediaToSend.base64 && mediaToSend.mimeType) {
                  // Extract only the base64 data (remove the "data:mime/type;base64," prefix)
                  const base64DataOnly = mediaToSend.base64.substring(mediaToSend.base64.indexOf(',') + 1);
-                 currentUserPartsForAPI.push({
-                     inlineData: {
-                         mimeType: mediaToSend.mimeType,
-                         data: base64DataOnly
-                     }
-                 });
-                 console.log(`Preparing ${mediaToSend.type} for API: ${mediaToSend.mimeType}`);
+                 if (base64DataOnly) {
+                     currentUserPartsForAPI.push({
+                         inlineData: {
+                             mimeType: mediaToSend.mimeType,
+                             data: base64DataOnly
+                         }
+                     });
+                     console.log(`Preparing ${mediaToSend.type} for API: ${mediaToSend.mimeType}`);
+                 } else {
+                      console.error("Failed to extract base64 data from mediaToSend.");
+                      displayError("Error preparing media data for sending.\nஅனுப்புவதற்கு மீடியா தரவைத் தயாரிப்பதில் பிழை.");
+                      removeMessageElement(thinking); setLoadingState(false); return;
+                 }
              }
 
-             // Add YouTube Video Part (if exists, mutually exclusive with file upload for now?)
-             // API might handle multiple types, let's allow it.
+             // Add YouTube Video Part
              if (youtubeUrl) {
                  currentUserPartsForAPI.push({
-                     fileData: {
-                         // MimeType seems optional for fileUri according to docs
-                         fileUri: youtubeUrl
-                     }
+                     fileData: { fileUri: youtubeUrl }
                  });
                  console.log(`Preparing YouTube URI for API: ${youtubeUrl}`);
              }
@@ -1381,41 +1555,40 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
              if (currentUserPartsForAPI.length > 0) {
                   finalContentsForAPI.push({ role: "user", parts: currentUserPartsForAPI });
              } else {
-                 console.warn("No valid parts generated for the current user message.");
-                 removeMessageElement(thinking); setLoadingState(false); return; // Avoid empty API call
+                 console.warn("No valid parts generated for the current user message API call.");
+                 // Maybe the user only sent an empty message? Don't send to API.
+                 removeMessageElement(thinking); setLoadingState(false); return;
              }
 
-             // Check total estimated size (simple base64 check, rough estimate)
+             // Estimate size and warn if large
              let estimatedSizeMB = JSON.stringify(finalContentsForAPI).length / 1024 / 1024;
              console.log(`Estimated API request size: ${estimatedSizeMB.toFixed(2)} MB`);
-             if (estimatedSizeMB > 18) { // Leave some margin for headers etc. below 20MB
-                 console.warn("Request size might exceed 20MB limit for inline data.");
-                 // In a real app, implement File API upload here.
-                 // For now, we proceed but it might fail.
+             if (estimatedSizeMB > 15) { // Warn earlier, e.g., > 15MB
+                 console.warn("API request size is large, might exceed 20MB limit for inline data. Consider smaller files/shorter prompts.");
+                 // Alert the user? For now, just console warning.
+                 // alert("Warning: The message content (especially audio/image) is large and might exceed the API limit.");
              }
 
-             console.warn("Calling Gemini API (Model:", MODEL_NAME, ") with multimodal input. Ensure API key has access.");
+             console.log("Calling Gemini API (Model:", MODEL_NAME, ")");
              // --- Call Gemini API ---
              try {
                  const response = await fetch(API_URL_BASE + API_KEY, {
                      method: 'POST',
                      headers: { 'Content-Type': 'application/json' },
                      body: JSON.stringify({
-                         contents: finalContentsForAPI, // Send combined history and current message
+                         contents: finalContentsForAPI,
                          safetySettings: [
                             { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
                             { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
                             { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
                             { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
                          ]
-                         // generationConfig: { candidateCount: 1 } // Default is 1
                      }),
                  });
 
                  removeMessageElement(thinking);
 
                  // --- Process API Response ---
-                 // Default error message
                  let aiMsgData = {
                      role: "model",
                      text: "Error: No valid response from API.\nAPI இலிருந்து சரியான பதில் இல்லை.",
@@ -1430,59 +1603,56 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
                      try {
                          const errorJson = await response.json();
                          errorDetails = errorJson.error?.message || errorDetails;
+                         // Log the full error JSON if available
+                         console.error("API Error Response Body:", errorJson);
+                         // Check for specific errors related to content
+                         if (errorDetails.includes("inline data exceeds size limit")) {
+                              errorDetails += "\nConsider using a smaller image or audio file.";
+                         } else if (errorDetails.includes("invalid API key")) {
+                              errorDetails += "\nAPI Key might be invalid.";
+                              localStorage.removeItem(STORAGE_KEY_API_KEY); API_KEY='';
+                         } else if (response.status === 400) {
+                              errorDetails += "\nCheck if the input format (e.g., audio type) is correct.";
+                         }
                      } catch {}
                      console.error("API Error:", response.status, errorDetails);
                      aiMsgData.text = `Error: ${errorDetails}\nபிழை: ${errorDetails}`;
-                     // Specific check for invalid API key
-                     if (response.status === 400 && errorDetails.toLowerCase().includes('api key not valid')) {
-                         localStorage.removeItem(STORAGE_KEY_API_KEY); // Clear the bad key
-                         API_KEY=''; // Clear runtime key
-                         aiMsgData.text += "\nInvalid API Key cleared. Reload page.\nதவறான API விசை அழிக்கப்பட்டது. பக்கத்தை மீண்டும் ஏற்றவும்.";
-                     }
+                     displayAsError = true; // Keep true for error display
                  } else {
                      const data = await response.json();
-                     console.log("API Response Data:", data); // Log the full response
+                     console.log("API Response Data:", JSON.stringify(data, null, 2)); // Pretty print response
 
                      let rawAiText = "";
                      let blocked = false;
-                     displayAsError = false; // Assume success unless blocked or no content
+                     displayAsError = false;
 
-                     // Check for prompt feedback blocks first
                      if (data.promptFeedback?.blockReason) {
                          aiMsgData.text = `Blocked (Prompt): ${data.promptFeedback.blockReason}\nதடுக்கப்பட்டது (உள்ளீடு): ${data.promptFeedback.blockReason}`;
-                         blocked = true;
-                         displayAsError = true;
+                         blocked = true; displayAsError = true;
                          console.warn("Prompt blocked:", data.promptFeedback.blockReason);
                      }
-                     // Check candidate-level blocks or finish reasons
                      else if (data.candidates && data.candidates.length > 0) {
                          const candidate = data.candidates[0];
                          if (candidate.finishReason === 'SAFETY') {
-                             aiMsgData.text = `Blocked (Response Safety)\nதடுக்கப்பட்டது (பதில் பாதுகாப்பு)`;
-                             blocked = true;
-                             displayAsError = true;
+                             aiMsgData.text = `Blocked (Response Safety): ${candidate.safetyRatings?.map(r => r.category + ': ' + r.probability).join(', ') || 'Reason unspecified'}\nதடுக்கப்பட்டது (பதில் பாதுகாப்பு)`;
+                             blocked = true; displayAsError = true;
                              console.warn("Response blocked due to safety:", candidate.safetyRatings);
                          } else if (candidate.finishReason === 'RECITATION') {
                               aiMsgData.text = `Blocked (Response Recitation)\nதடுக்கப்பட்டது (பதில் ஒப்புவித்தல்)`;
-                              blocked = true;
-                              displayAsError = true;
+                              blocked = true; displayAsError = true;
                               console.warn("Response blocked due to recitation.");
                          } else if (candidate.content?.parts?.length > 0) {
-                             // Valid content received
-                             rawAiText = candidate.content.parts.map(part => part.text || '').join(''); // Combine text parts
+                             rawAiText = candidate.content.parts.map(part => part.text || '').join('');
                              aiMsgData.text = rawAiText;
                              displayAsError = false; // Success
 
-                             // --- Parse MCQ if requested ---
                              if (isMCQRequest && !blocked) {
                                  console.log("Attempting to parse MCQ JSON...");
-                                 try {
+                                 try { // (MCQ Parsing Logic - unchanged from v9.4)
                                      const jsonMatch = rawAiText.match(/```json\s*([\s\S]*?)\s*```/);
                                      const jsonString = jsonMatch ? jsonMatch[1].trim() : rawAiText.trim();
-                                     // Basic check for array structure
                                      if (jsonString.startsWith('[') && jsonString.endsWith(']')) {
                                          const mcqs = JSON.parse(jsonString);
-                                         // Add more robust validation as before
                                          const isValidMCQArray = Array.isArray(mcqs) && mcqs.length > 0 && mcqs.every(q =>
                                              q && typeof q.question === 'object' && q.question !== null && typeof q.question.en === 'string' && typeof q.question.ta === 'string' &&
                                              Array.isArray(q.options) && q.options.length === 4 && q.options.every(opt => opt && typeof opt.en === 'string' && typeof opt.ta === 'string') &&
@@ -1491,139 +1661,138 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
                                          );
                                          if (isValidMCQArray) {
                                              const summaryText = `Generated ${mcqs.length} MCQs. / ${mcqs.length} MCQகள் உருவாக்கப்பட்டுள்ளன.`;
-                                             aiMsgData.text = summaryText; // Replace raw JSON with summary
-                                             aiMsgData.mcqData = mcqs;
-                                             aiMsgData.mcqTitle = potentialTestTitle;
-                                             console.log("MCQs parsed successfully:", mcqs.length);
-                                             displayAsError = false;
+                                             aiMsgData.text = summaryText; aiMsgData.mcqData = mcqs; aiMsgData.mcqTitle = potentialTestTitle;
+                                             console.log("MCQs parsed successfully:", mcqs.length); displayAsError = false;
                                          } else {
-                                             console.warn("MCQ JSON validation failed. Structure incorrect.");
-                                             aiMsgData.text = "MCQ format error (Invalid Structure).\nMCQ வடிவமைப்பு பிழை (தவறான கட்டமைப்பு).\n\n" + rawAiText; // Show raw text if parsing fails
-                                             displayAsError = true;
-                                             aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
+                                             console.warn("MCQ JSON validation failed."); aiMsgData.text = "MCQ format error (Invalid Structure).\nMCQ வடிவமைப்பு பிழை (தவறான கட்டமைப்பு).\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
                                          }
                                      } else {
-                                         console.warn("MCQ response not a JSON array string.");
-                                         aiMsgData.text = "Expected MCQ JSON format error (Not an Array).\nஎதிர்பார்க்கப்பட்ட MCQ JSON வடிவமைப்பு பிழை (வரிசை இல்லை).\n\n" + rawAiText;
-                                         displayAsError = true;
-                                         aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
+                                         console.warn("MCQ response not JSON array."); aiMsgData.text = "Expected MCQ JSON format error (Not an Array).\nஎதிர்பார்க்கப்பட்ட MCQ JSON வடிவமைப்பு பிழை (வரிசை இல்லை).\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
                                      }
                                  } catch (parseError) {
-                                     console.error("Failed to parse MCQ JSON:", parseError);
-                                     aiMsgData.text = "Error parsing MCQ JSON.\nMCQ JSON ஐப் பாகுபடுத்துவதில் பிழை.\n\n" + rawAiText;
-                                     displayAsError = true;
-                                     aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
+                                     console.error("Failed to parse MCQ JSON:", parseError); aiMsgData.text = "Error parsing MCQ JSON.\nMCQ JSON ஐப் பாகுபடுத்துவதில் பிழை.\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null;
                                  }
                              } // End MCQ parsing
 
+                         } else if (candidate.finishReason === 'MAX_TOKENS') {
+                             console.warn("API response stopped due to MAX_TOKENS.");
+                             aiMsgData.text = rawAiText + "\n\n(Response may be truncated due to length limit / நீள வரம்பு காரணமாக பதில் துண்டிக்கப்படலாம்)";
+                             displayAsError = false; // Show partial response
                          } else if (candidate.finishReason === 'STOP') {
-                             // Model finished, but no text part - could be okay, or empty response
                              console.warn("API response finished with STOP but no text part found.");
                              aiMsgData.text = "(Model response finished without text / மாதிரி பதில் உரை இல்லாமல் முடிந்தது)";
-                             displayAsError = false; // Consider this non-error for now
+                             displayAsError = false;
                          } else {
-                             // Other finish reasons like MAX_TOKENS, etc.
                              console.warn("Unexpected API finish reason:", candidate.finishReason, data);
                              aiMsgData.text = `Sorry, received an unexpected response. (Reason: ${candidate.finishReason || 'Unknown'})\nமன்னிக்கவும், எதிர்பாராத பதில் கிடைத்தது. (காரணம்: ${candidate.finishReason || 'தெரியாதது'})`;
                              displayAsError = true;
                          }
                      } else {
-                         // No candidates array, or empty - this shouldn't happen with candidateCount=1
                          console.error("API Error: No candidates found in response.");
-                         aiMsgData.text = "Error: No response data from API.\nபிழை: API இலிருந்து பதில் தரவு இல்லை.";
+                         aiMsgData.text = "Error: No response data received from API.\nபிழை: API இலிருந்து பதில் தரவு எதுவும் பெறப்படவில்லை.";
                          displayAsError = true;
                      }
                  }
 
                  // --- Save AI Response to Firestore ---
                  try {
-                      // Avoid logging large base64 strings here too
-                      const loggableAiMsgData = {
-                          ...aiMsgData,
-                          ...(aiMsgData.mcqData && { mcqData: `[${aiMsgData.mcqData.length} MCQs]` })
-                      };
+                      const loggableAiMsgData = { ...aiMsgData, ...(aiMsgData.mcqData && { mcqData: `[${aiMsgData.mcqData.length} MCQs]` }) };
                       console.log("Saving AI Response to Firestore:", loggableAiMsgData);
-                      await messagesColRef.add(aiMsgData); // Save full AI data
+                      await messagesColRef.add(aiMsgData);
                       await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
                       console.log("AI response/error saved to Firestore.");
                  } catch (saveError) {
                       console.error("Error saving AI response:", saveError);
-                      // Display the AI's text even if saving failed, but show an additional error
                       displayError(`Failed to save response: ${aiMsgData.text}\nபதிலைச் சேமிக்க முடியவில்லை: ${aiMsgData.text}`);
                  }
 
              } catch (fetchError) { // Network errors etc.
-                 console.error("API Fetch Error:", fetchError);
+                 console.error("API Fetch/Network Error:", fetchError);
                  removeMessageElement(thinking);
-                 const errorText = `API Error: ${fetchError.message || "Network issue."}\nAPI பிழை: ${fetchError.message || "நெட்வொர்க் சிக்கல்."}`;
+                 const errorText = `API Network Error: ${fetchError.message || "Check connection."}\nAPI நெட்வொர்க் பிழை: ${fetchError.message || "இணைப்பைச் சரிபார்க்கவும்."}`;
                  displayError(errorText);
-                 // Try to save the fetch error message to Firestore history
                  try {
                       await messagesColRef.add({ role: "model", text: errorText, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
                       await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
-                 } catch (saveError) { console.error("Failed to save fetch error:", saveError); }
+                 } catch (saveError) { console.error("Failed to save fetch error message:", saveError); }
              } finally {
                  setLoadingState(false);
-                 if (!isTestMode && !isReviewMode && activeChatId) { userInput.focus(); }
+                 if (!isTestMode && !isReviewMode && activeChatId) {
+                      setTimeout(() => userInput.focus(), 100); // Delay focus slightly
+                 }
              }
         } // End of handleSendMessage
 
         // --- Chat Title Generation/Update ---
-        // (No changes needed here, copy from previous version)
+        // (No changes needed here)
         function generateChatTitle(sourceText) { if (!sourceText || typeof sourceText !== 'string') return NEW_CHAT_TITLE; const text = sourceText.trim(); if (!text) return NEW_CHAT_TITLE; const title = text.split(/\s+/).slice(0, 5).join(' ').replace(/[.,!?;:]+$/, ''); return title.length > 35 ? title.substring(0, 32) + '...' : title; }
         async function updateActiveChatTitle(newTitle) { if (!currentUser || !activeChatId || !newTitle || typeof newTitle !== 'string' || !newTitle.trim() || newTitle.trim() === NEW_CHAT_TITLE) return; const finalTitle = newTitle.trim(); const chatDocRef = db.collection('chats').doc(activeChatId); try { await chatDocRef.update({ title: finalTitle }); console.log(`Chat ${activeChatId} title updated: "${finalTitle}"`); } catch (error) { console.error("Error updating chat title:", error); } }
 
 
         // --- UI & Message Display Helpers ---
+        // (Minor changes in displayError, displayMessage, setLoadingState)
         function autoGrowTextarea() { userInput.style.height='auto'; userInput.style.height=(userInput.scrollHeight)+'px'; }
         function handleInputKeydown(event) { if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleSendMessage();} }
         function handleSuggestionClick(event) { if(event.target.classList.contains('suggestion-chip')){userInput.value=event.target.dataset.prompt||'';autoGrowTextarea();userInput.focus();} }
-        function displayError(text) { console.error("Displaying Error:", text); displayMessage(`${text}`, 'ai', ['error-message']); scrollToBottom(); } // Removed "Error:" prefix as it's added in calls
+        function displayError(text) { console.error("Displaying Error:", text); displayMessage(`${text}`, 'ai', ['error-message']); scrollToBottom(); }
         function scrollToBottom(immediate = false) { chatArea.scrollTo({top:chatArea.scrollHeight,behavior:immediate?'auto':'smooth'}); }
         function removeMessageElement(element) { if(element && element.parentNode === chatArea) { chatArea.removeChild(element); } }
 
         function setLoadingState(isLoading, message = "Generating...") {
-             // Determine overall disabled state
-             const isDisabledOverall = isLoading || !currentUser || !API_KEY;
-             // Determine send button state (needs active chat)
-             const isSendDisabled = isDisabledOverall || !activeChatId || isRecording; // Also disable send if recording
-             // Determine media/record button state (needs active chat for sending)
-             const isMediaDisabled = isDisabledOverall || !activeChatId || isRecording; // Disable media interaction if loading or recording
-             // Determine non-chat specific controls state
-             const isControlDisabled = isLoading || !currentUser || isRecording; // Disable sidebar controls etc. if loading or recording
+             // console.log(`setLoadingState: isLoading=${isLoading}, message=${message}, isRecording=${isRecording}`);
 
-             // Apply states
-             userInput.disabled = isDisabledOverall || isRecording;
-             sendButton.disabled = isSendDisabled;
-             mcqModeCheckbox.disabled = isSendDisabled;
+             // Determine overall disabled state (logged out, no API key)
+             const isAppDisabled = !currentUser || !API_KEY;
+             // Determine if chat-specific actions are possible (needs active chat)
+             const isChatActive = !!activeChatId;
 
-             imageUploadButton.disabled = isMediaDisabled;
-             audioUploadButton.disabled = isMediaDisabled;
-             // Special handling for record button: allow stopping if recording
-             recordAudioButton.disabled = isDisabledOverall || !activeChatId; // Base disable state
+             // --- Calculate individual button states ---
+             // Sidebar controls
+             const isSidebarControlDisabled = isLoading || isAppDisabled || isRecording;
+
+             // Input area controls
+             userInput.disabled = isLoading || isAppDisabled || isRecording;
+             mcqModeCheckbox.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
+             sendButton.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
+
+             // Media buttons need active chat and not loading/recording
+             imageUploadButton.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
+             audioUploadButton.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
+
+             // Record button: Allow stopping if recording, otherwise disable if busy/no chat etc.
+             let recordButtonDisabled = isLoading || isAppDisabled || !isChatActive;
              if (isRecording) {
-                 recordAudioButton.disabled = false; // Always allow stopping
-                 imageUploadButton.disabled = true; // Force disable other media if recording
-                 audioUploadButton.disabled = true;
-                 userInput.disabled = true; // Force disable text input if recording
-                 sendButton.disabled = true; // Force disable send if recording
-                 mcqModeCheckbox.disabled = true;
+                 recordButtonDisabled = false; // ALWAYS allow clicking Stop
              }
+             recordAudioButton.disabled = recordButtonDisabled;
 
-             startChatButton.disabled = isControlDisabled;
-             testSearchInput.disabled = isControlDisabled;
-             decreaseTextBtn.disabled = isControlDisabled || (currentUser && currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER);
-             increaseTextBtn.disabled = isControlDisabled || (currentUser && currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER);
-             themeToggleButton.disabled = isControlDisabled;
+             // Start Chat button
+             startChatButton.disabled = isLoading || isAppDisabled || isRecording; // Disable if busy/recording
 
-             // Update placeholder text
-             if (isLoading && !isRecording) { userInput.placeholder = message; }
-             else if (isRecording) { userInput.placeholder = "Recording audio... / ஒலி பதிவு செய்யப்படுகிறது..."; }
-             else if (!currentUser) { userInput.placeholder = "Please log in / உள்நுழையவும்"; }
-             else if (!activeChatId) { userInput.placeholder = "Select or create a chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்"; }
-             else if (!API_KEY) { userInput.placeholder = "API Key missing. / API விசை இல்லை."; }
-             else { userInput.placeholder = "Enter prompt, attach media, or paste URL\nஉள்ளீட்டை உள்ளிடவும், மீடியாவை இணைக்கவும், அல்லது URL ஐ ஒட்டவும்"; }
-         }
+             // Test Search
+             testSearchInput.disabled = isLoading || isAppDisabled || isRecording;
+
+             // Text size/Theme
+             decreaseTextBtn.disabled = isSidebarControlDisabled || (currentUser && currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER);
+             increaseTextBtn.disabled = isSidebarControlDisabled || (currentUser && currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER);
+             themeToggleButton.disabled = isSidebarControlDisabled;
+
+
+             // --- Update placeholder text ---
+             if (isRecording) {
+                 userInput.placeholder = "Recording audio... / ஒலி பதிவு செய்யப்படுகிறது...";
+             } else if (isLoading) {
+                 userInput.placeholder = message;
+             } else if (isAppDisabled && !currentUser) {
+                 userInput.placeholder = "Please log in / உள்நுழையவும்";
+             } else if (isAppDisabled && currentUser) {
+                 userInput.placeholder = "API Key missing. / API விசை இல்லை.";
+             } else if (!isChatActive) {
+                 userInput.placeholder = "Select or create a chat / உரையாடலைத் தேர்ந்தெடுக்கவும் அல்லது உருவாக்கவும்";
+             } else {
+                 userInput.placeholder = "Enter prompt, attach media, or paste URL\nஉள்ளீட்டை உள்ளிடவும், மீடியாவை இணைக்கவும், அல்லது URL ஐ ஒட்டவும்";
+             }
+        }
 
         function switchView(viewName, cameFromTests = false) {
             console.log("Switching view to:", viewName);
@@ -1665,10 +1834,8 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
         }
 
         /**
-         * Displays a message in the chat area. Handles text formatting,
-         * MathJax, images (uploaded/URL), YouTube embeds, and audio playback.
-         * அரட்டைப் பகுதியில் ஒரு செய்தியைக் காட்டுகிறது. உரை வடிவமைப்பு,
-         * MathJax, படங்கள் (பதிவேற்றப்பட்ட/URL), YouTube உட்பொதிகள் மற்றும் ஒலி பின்னணி ஆகியவற்றைக் கையாளுகிறது.
+         * Displays a message in the chat area. Handles text, formatting, media, etc.
+         * அரட்டைப் பகுதியில் ஒரு செய்தியைக் காட்டுகிறது. உரை, வடிவமைப்பு, மீடியா போன்றவற்றைக் கையாளுகிறது.
          */
         function displayMessage(text, sender, cssClasses = [], appendHtml = null, messageData = null) {
             const messageElement = document.createElement('div');
@@ -1679,129 +1846,124 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
 
             let hasContent = false; // Track if any content is added
 
-            // Display Uploaded/Sent Media (Image or Audio) from Firestore data
+            // 1. Display Media (Image or Audio from messageData)
             if (messageData?.mediaType === 'image' && messageData.mediaData) {
-                const img = document.createElement('img');
-                img.src = messageData.mediaData; // Assumes base64 data URL stored
-                img.alt = "Uploaded Image";
-                img.classList.add('uploaded-image');
-                img.loading = "lazy";
-                messageElement.appendChild(img);
-                hasContent = true;
+                try {
+                    const img = document.createElement('img');
+                    img.src = messageData.mediaData; // Assumes base64 data URL
+                    img.alt = messageData.mediaName || "Uploaded Image";
+                    img.classList.add('uploaded-image');
+                    img.loading = "lazy";
+                    img.onerror = () => { img.alt = "Image load error"; img.src = ""; }; // Handle load errors
+                    messageElement.appendChild(img);
+                    hasContent = true;
+                } catch (e) { console.error("Error creating image element:", e); }
             } else if (messageData?.mediaType === 'audio' && messageData.mediaData) {
-                const audioContainer = document.createElement('div');
-                audioContainer.classList.add('chat-audio-player');
-                const audioPlayer = document.createElement('audio');
-                audioPlayer.src = messageData.mediaData; // Assumes base64 data URL stored
-                audioPlayer.controls = true;
-                audioPlayer.preload = "metadata"; // Load only metadata initially
-                audioContainer.appendChild(audioPlayer);
-
-                // Optional: Add filename if stored
-                // if (messageData.mediaName) {
-                //     const fileNameSpan = document.createElement('span');
-                //     fileNameSpan.textContent = messageData.mediaName;
-                //     fileNameSpan.style.fontSize = '0.8em';
-                //     fileNameSpan.style.marginLeft = '10px';
-                //     fileNameSpan.style.color = 'var(--text-secondary)';
-                //     audioContainer.appendChild(fileNameSpan);
-                // }
-
-                messageElement.appendChild(audioContainer);
-                hasContent = true;
+                try {
+                    const audioContainer = document.createElement('div');
+                    audioContainer.classList.add('chat-audio-player');
+                    const audioPlayer = document.createElement('audio');
+                    audioPlayer.src = messageData.mediaData; // Assumes base64 data URL
+                    audioPlayer.controls = true;
+                    audioPlayer.preload = "metadata";
+                    // Optional: Add title/tooltip with filename
+                    if(messageData.mediaName) audioPlayer.title = messageData.mediaName;
+                    audioPlayer.onerror = () => { console.warn("Error loading audio player for src:", messageData.mediaData?.substring(0, 50)); audioContainer.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(Audio load error)</span>`; };
+                    audioContainer.appendChild(audioPlayer);
+                    messageElement.appendChild(audioContainer);
+                    hasContent = true;
+                } catch (e) { console.error("Error creating audio element:", e); }
             }
 
-            // Format and Display Text Content
+            // 2. Display Formatted Text Content
             if (text) {
                 const messageContentContainer = document.createElement('div');
-                const tempDiv = document.createElement('div');
-                tempDiv.innerText = text; // Basic sanitization against direct HTML injection in text
-                let formattedText = tempDiv.innerHTML;
+                try {
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerText = text;
+                    let formattedText = tempDiv.innerHTML;
 
-                // Parse Image URLs in text (only if no uploaded image was part of this specific message)
-                if (messageData?.mediaType !== 'image') {
-                    formattedText = formattedText.replace(imageUrlRegex, (match, imgUrl) =>
-                        `<img src="${imgUrl}" class="chat-image" alt="Chat Image" loading="lazy">`
-                    );
-                }
+                    // Image URLs in text (only if no primary uploaded image)
+                    if (messageData?.mediaType !== 'image') {
+                        formattedText = formattedText.replace(imageUrlRegex, (match, imgUrl) =>
+                            `<img src="${imgUrl}" class="chat-image" alt="Chat Image" loading="lazy" onerror="this.alt='Image URL load error'; this.src='';">`
+                        );
+                    }
 
-                // Code blocks, inline code, bold, italics, newlines
-                formattedText = formattedText
-                    .replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`)
-                    .replace(/`([^`]+)`/g, (match, code) => `<code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`)
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>') // Non-greedy *italic*
-                    .replace(/\n/g, '<br>');
+                    // Formatting: Code blocks, inline code, bold, italics, newlines
+                    formattedText = formattedText
+                        .replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`)
+                        .replace(/`([^`]+)`/g, (match, code) => `<code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`)
+                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                        .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+                        .replace(/\n/g, '<br>');
 
-                messageContentContainer.innerHTML = formattedText;
-                messageElement.appendChild(messageContentContainer);
-                hasContent = true;
+                    messageContentContainer.innerHTML = formattedText;
+                    messageElement.appendChild(messageContentContainer);
+                    hasContent = true;
 
-                // Try to render MathJax if text contains potential math
-                 if (text.includes('$') || text.includes('\\')) {
-                    try {
+                    // MathJax Rendering (defer slightly)
+                    if (text.includes('$') || text.includes('\\') || text.includes('^') || text.includes('_')) {
                          if (typeof MathJax !== "undefined" && MathJax.typesetPromise) {
-                            // Delay typesetting slightly to ensure element is in DOM
                             setTimeout(() => {
                                 MathJax.typesetPromise([messageContentContainer]).catch(err => console.error('MathJax typesetting error:', err));
-                            }, 0);
+                            }, 50); // Increased delay slightly
                          }
-                     } catch (e) { console.error("MathJax call failed:", e); }
-                 }
+                    }
+                } catch (e) { console.error("Error formatting text content:", e); }
             }
 
-            // YouTube Embed
+            // 3. YouTube Embed
             if (messageData?.youtubeVideoId) {
-                const youtubeEmbedDiv = document.createElement('div');
-                youtubeEmbedDiv.classList.add('youtube-embed-container');
-                const iframe = document.createElement('iframe');
-                iframe.classList.add('chat-video');
-                iframe.src = `https://www.youtube.com/embed/${messageData.youtubeVideoId}`;
-                iframe.title = "YouTube video player";
-                iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-                iframe.allowFullscreen = true;
-                iframe.loading = "lazy";
-                youtubeEmbedDiv.appendChild(iframe);
-                messageElement.appendChild(youtubeEmbedDiv);
-                hasContent = true;
+                 try {
+                    const youtubeEmbedDiv = document.createElement('div');
+                    youtubeEmbedDiv.classList.add('youtube-embed-container');
+                    const iframe = document.createElement('iframe');
+                    iframe.classList.add('chat-video');
+                    iframe.src = `https://www.youtube.com/embed/${messageData.youtubeVideoId}`;
+                    iframe.title = "YouTube video player";
+                    iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+                    iframe.allowFullscreen = true;
+                    iframe.loading = "lazy";
+                    iframe.onerror = () => { youtubeEmbedDiv.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(YouTube embed error)</span>`; };
+                    youtubeEmbedDiv.appendChild(iframe);
+                    messageElement.appendChild(youtubeEmbedDiv);
+                    hasContent = true;
+                } catch (e) { console.error("Error creating YouTube embed:", e); }
             }
 
-            // MCQ Offer Button
+            // 4. MCQ Offer Button (only for AI messages)
             if (messageData?.role === 'model' && messageData?.mcqData?.length > 0) {
-                displayMCQOffer(messageData.mcqData, messageData.mcqTitle, messageElement);
-                hasContent = true; // MCQ offer counts as content
+                try {
+                    displayMCQOffer(messageData.mcqData, messageData.mcqTitle, messageElement);
+                    hasContent = true;
+                } catch (e) { console.error("Error displaying MCQ offer:", e); }
             }
-            // Append Raw HTML (Use with caution)
+            // 5. Append Raw HTML (Use with extreme caution)
             else if (appendHtml) {
-                const appendDiv = document.createElement('div');
-                appendDiv.innerHTML = appendHtml; // Security risk if appendHtml is not trusted
-                while (appendDiv.firstChild) {
-                    messageElement.appendChild(appendDiv.firstChild);
-                }
-                hasContent = true;
+                try {
+                    const appendDiv = document.createElement('div');
+                    appendDiv.innerHTML = appendHtml; // Security risk if html is not trusted
+                    while (appendDiv.firstChild) {
+                        messageElement.appendChild(appendDiv.firstChild);
+                    }
+                    hasContent = true;
+                } catch (e) { console.error("Error appending raw HTML:", e); }
             }
 
-            // Only append if there's actual content to display
-            if (hasContent) {
+            // Only append the message element if it actually has content or is a 'thinking' message
+            if (hasContent || cssClasses.includes('thinking')) {
                 chatArea.appendChild(messageElement);
-            } else if (sender === 'ai' && !cssClasses.includes('thinking')) {
-                 // If AI message has no content and isn't 'thinking', log it but don't display empty bubble
-                 console.warn("Attempted to display an empty AI message:", messageData);
-            } else if (sender === 'user' && !text && !messageData?.mediaType && !messageData?.youtubeVideoId) {
-                // Don't display empty user messages unless they have media/youtube
-                console.warn("Attempted to display an empty user message:", messageData);
             } else {
-                 // Append even if empty for 'thinking' messages or potentially other cases
-                 chatArea.appendChild(messageElement);
+                 console.warn(`Skipping display of empty message. Sender: ${sender}, Text: '${text}', Data:`, messageData);
             }
 
-
-            return messageElement;
+            return messageElement; // Return element even if not appended, for potential removal (like 'thinking')
         }
 
 
         // --- MCQ/Test Specific Functions ---
-        // (No changes needed here, copy from previous version)
+        // (No changes needed here)
          function handleChatAreaClick(event) {
             // Handle "Start Mock Test" button click
             const startButton = event.target.closest('.start-test-button');
@@ -1820,76 +1982,70 @@ Provide accurate Tamil translations. Do not include any text outside the JSON st
 
             // Handle image click (open in new tab)
             const clickedImage = event.target.closest('img.chat-image, img.uploaded-image');
-            if (clickedImage?.src && !clickedImage.src.endsWith('#')) { // Check if src is valid
+            if (clickedImage?.src && !clickedImage.src.startsWith('#') && !clickedImage.src.startsWith('')) { // Check if src is valid and not empty
                 try {
-                    // Prevent opening base64 data URIs directly if they are huge, though unlikely for images here
-                    if (!clickedImage.src.startsWith('data:')) {
+                    // Prevent opening huge base64 data URIs in a new tab directly
+                    if (!clickedImage.src.startsWith('data:image')) {
                          window.open(clickedImage.src, '_blank');
                     } else {
-                        console.log("Clicked base64 image in chat.");
-                        // Optionally open in a modal or do nothing
+                        console.log("Clicked base64 image in chat. Size:", clickedImage.src.length);
+                        // Optionally open in a modal or download instead of new tab for large base64
+                         if (clickedImage.src.length > 2 * 1024 * 1024) { // Example: > 2MB
+                              alert("This is a large embedded image. Open in new tab cancelled.");
+                         } else {
+                              window.open(clickedImage.src, '_blank');
+                         }
                     }
                 } catch (e) {
                     console.error("Error opening image source:", e);
                 }
             }
-             // Could add handling for clicking audio elements if needed (e.g., download)
         }
         function displayMCQOffer(mcqData, mcqTitle, aiMessageElement) {
-            // Avoid adding multiple buttons if message is re-rendered
             if (aiMessageElement.querySelector('.start-test-button')) return;
-
             const questionCount = mcqData.length;
             const button = document.createElement('button');
             button.classList.add('start-test-button');
             button.textContent = `Start Mock Test (${questionCount} Qs) / மாதிரி சோதனை (${questionCount} கே)`;
             button.title = mcqTitle || `Start generated test`;
             try {
-                // Store the MCQ data directly on the button
                 button.dataset.mcq = JSON.stringify(mcqData);
-                if (mcqTitle) {
-                    button.dataset.mcqTitle = mcqTitle;
-                }
-            } catch (e) {
-                console.error("Failed stringify MCQ data for button:", e);
-                // Don't add the button if data can't be stored
-                return;
-            }
+                if (mcqTitle) { button.dataset.mcqTitle = mcqTitle; }
+            } catch (e) { console.error("Failed stringify MCQ data for button:", e); return; }
             const buttonContainer = document.createElement('div');
-            buttonContainer.style.marginTop = '10px'; // Add some space
-            buttonContainer.appendChild(button);
+            buttonContainer.style.marginTop = '10px'; buttonContainer.appendChild(button);
             aiMessageElement.appendChild(buttonContainer);
         }
         function toggleTestLanguage() { currentTestLanguage = (currentTestLanguage === 'en') ? 'ta' : 'en'; testLanguageToggle.textContent = (currentTestLanguage === 'en') ? 'தமிழ்' : 'English'; displayTestQuestion(currentQuestionIndex); }
-        function startMockTest(mcqs, title = null) { if (!currentUser) { displayError("Log in to start test.\nசோதனையைத் தொடங்க உள்நுழையவும்."); return; } if (!mcqs?.length) { displayError("No questions for test.\nசோதனைக்கு கேள்விகள் இல்லை."); if (cameFromAllTestsList) { switchView('chat'); } return; } console.log("Starting mock test:", mcqs.length, "Qs. Title:", title); currentTestMCQs = mcqs; currentQuestionIndex = 0; userAnswers = new Array(mcqs.length).fill(null); reviewResultsCache = null; currentTestLanguage = 'en'; // Default to English on start testLanguageToggle.textContent = 'தமிழ்'; switchView('test'); displayTestQuestion(0); startTestTimer(); const finalTitle = (title && title.trim()) ? title.trim() : `Mock Test (${mcqs.length} Qs)`; testTitle.textContent = finalTitle; }
-        function displayTestQuestion(index) { if (index < 0 || index >= currentTestMCQs.length) return; currentQuestionIndex = index; const questionData = currentTestMCQs[index]; const lang = currentTestLanguage; // 'en' or 'ta' const questionText = questionData.question?.[lang] || questionData.question?.en || "(Question missing)"; testQuestionNumber.textContent = `Question ${index + 1}`; testQuestion.innerHTML = questionText; // Use innerHTML for potential formatting testOptionsContainer.innerHTML = ''; const options = questionData.options || []; const optionLetters = ['A', 'B', 'C', 'D']; options.forEach((optionObj, optionIndex) => { if (optionIndex >= optionLetters.length) return; // Safety for >4 options const optionText = optionObj?.[lang] || optionObj?.en || '(Option missing)'; const label = document.createElement('label'); const input = document.createElement('input'); input.type = 'radio'; input.name = `q_${index}`; input.value = optionIndex; input.checked = (userAnswers[index] === optionIndex); input.onchange = () => handleOptionSelect(optionIndex); label.appendChild(input); label.appendChild(document.createTextNode(` ${optionLetters[optionIndex]}. ${optionText}`)); testOptionsContainer.appendChild(label); }); // Re-render MathJax if needed try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([testQuestion, testOptionsContainer]).catch(err=>console.error('MathJax Test Q Error:', err)); } } catch(e){ console.error("MathJax call failed in test:", e); } // Update navigation buttons prevQuestionBtn.disabled = (index === 0); nextQuestionBtn.disabled = (index === currentTestMCQs.length - 1); // Update counter questionCounter.textContent = `Q: ${index + 1} / ${currentTestMCQs.length}`; }
+        function startMockTest(mcqs, title = null) { if (!currentUser) { displayError("Log in to start test.\nசோதனையைத் தொடங்க உள்நுழையவும்."); return; } if (!mcqs?.length) { displayError("No questions for test.\nசோதனைக்கு கேள்விகள் இல்லை."); if (cameFromAllTestsList) { switchView('chat'); } return; } console.log("Starting mock test:", mcqs.length, "Qs. Title:", title); currentTestMCQs = mcqs; currentQuestionIndex = 0; userAnswers = new Array(mcqs.length).fill(null); reviewResultsCache = null; currentTestLanguage = 'en'; testLanguageToggle.textContent = 'தமிழ்'; switchView('test'); displayTestQuestion(0); startTestTimer(); const finalTitle = (title && title.trim()) ? title.trim() : `Mock Test (${mcqs.length} Qs)`; testTitle.textContent = finalTitle; }
+        function displayTestQuestion(index) { if (index < 0 || index >= currentTestMCQs.length) return; currentQuestionIndex = index; const questionData = currentTestMCQs[index]; const lang = currentTestLanguage; const questionText = questionData.question?.[lang] || questionData.question?.en || "(Question missing)"; testQuestionNumber.textContent = `Question ${index + 1}`; testQuestion.innerHTML = questionText; testOptionsContainer.innerHTML = ''; const options = questionData.options || []; const optionLetters = ['A', 'B', 'C', 'D']; options.forEach((optionObj, optionIndex) => { if (optionIndex >= optionLetters.length) return; const optionText = optionObj?.[lang] || optionObj?.en || '(Option missing)'; const label = document.createElement('label'); const input = document.createElement('input'); input.type = 'radio'; input.name = `q_${index}`; input.value = optionIndex; input.checked = (userAnswers[index] === optionIndex); input.onchange = () => handleOptionSelect(optionIndex); label.appendChild(input); label.appendChild(document.createTextNode(` ${optionLetters[optionIndex]}. ${optionText}`)); testOptionsContainer.appendChild(label); }); try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([testQuestion, testOptionsContainer]).catch(err=>console.error('MathJax Test Q Error:', err)); } } catch(e){ console.error("MathJax call failed in test:", e); } prevQuestionBtn.disabled = (index === 0); nextQuestionBtn.disabled = (index === currentTestMCQs.length - 1); questionCounter.textContent = `Q: ${index + 1} / ${currentTestMCQs.length}`; }
         function handleOptionSelect(optionIndex) { if (currentQuestionIndex >= 0 && currentQuestionIndex < userAnswers.length) { userAnswers[currentQuestionIndex] = optionIndex; console.log(`Answered Q${currentQuestionIndex + 1}: Option ${optionIndex}`); } }
         function handleTestNavigation(direction) { let newIndex = currentQuestionIndex; if (direction === 'prev' && currentQuestionIndex > 0) { newIndex--; } else if (direction === 'next' && currentQuestionIndex < currentTestMCQs.length - 1) { newIndex++; } if (newIndex !== currentQuestionIndex) { displayTestQuestion(newIndex); } }
         function startTestTimer() { if (testTimerInterval) clearInterval(testTimerInterval); testStartTime = Date.now(); testTimer.textContent = `Time: 00:00`; testTimerInterval = setInterval(() => { const elapsedSeconds = Math.floor((Date.now() - testStartTime) / 1000); const minutes = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0'); const seconds = (elapsedSeconds % 60).toString().padStart(2, '0'); testTimer.textContent = `Time: ${minutes}:${seconds}`; }, 1000); }
-        function submitTest() { if (!confirm("Submit test?\nசோதனையைச் சமர்ப்பிக்கவா?")) return; if (testTimerInterval) clearInterval(testTimerInterval); const endTime = Date.now(); const timeTakenMs = testStartTime ? endTime - testStartTime : 0; const results = calculateResults(currentTestMCQs, userAnswers, timeTakenMs); reviewResultsCache = results; // Store results for display/save switchView('review', false); // Switch to review view displayReview(results); }
+        function submitTest() { if (!confirm("Submit test?\nசோதனையைச் சமர்ப்பிக்கவா?")) return; if (testTimerInterval) clearInterval(testTimerInterval); const endTime = Date.now(); const timeTakenMs = testStartTime ? endTime - testStartTime : 0; const results = calculateResults(currentTestMCQs, userAnswers, timeTakenMs); reviewResultsCache = results; switchView('review', false); displayReview(results); }
 
         // --- Review Functions ---
-        // (No changes needed here, copy from previous version)
-        function toggleReviewLanguage() { currentReviewLanguage = (currentReviewLanguage === 'en') ? 'ta' : 'en'; reviewLanguageToggle.textContent = (currentReviewLanguage === 'en') ? 'தமிழ்' : 'English'; if (reviewResultsCache) { displayReview(reviewResultsCache); // Re-render review with new language } }
-        function calculateResults(mcqs, answers, timeMs) { let correctCount = 0; let incorrectCount = 0; let skippedCount = 0; const reviewQuestions = []; mcqs.forEach((questionData, index) => { const userAnswerIndex = answers[index]; // 0, 1, 2, 3 or null const options = questionData.options || []; const correctAnswerLetter = questionData.answer?.trim().toUpperCase(); const correctAnswerIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 'A'.charCodeAt(0) : -1; const correctAnswerTextEn = (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) ? (options[correctAnswerIndex]?.en || '?') : "N/A"; let userAnswerTextEn = "Skipped"; let status = "skipped"; if (userAnswerIndex !== null && userAnswerIndex >= 0 && userAnswerIndex < options.length) { userAnswerTextEn = options[userAnswerIndex]?.en || '?'; if (userAnswerIndex === correctAnswerIndex) { status = "correct"; correctCount++; } else { status = "incorrect"; incorrectCount++; } } else if (userAnswerIndex !== null) { // Handle potential invalid index (though shouldn't happen with radio buttons) userAnswerTextEn = "Invalid"; status = "incorrect"; incorrectCount++; } else { // userAnswerIndex is null skippedCount++; } reviewQuestions.push({ question: questionData.question?.en || '?', // Store English base for consistency correctAnswer: correctAnswerTextEn, userAnswer: userAnswerTextEn, status: status, explanation: questionData.explanation?.en || "N/A" // Store English base }); }); const totalQuestions = mcqs.length; const scoreString = `${correctCount}/${totalQuestions}`; const timeSeconds = Math.round(timeMs / 1000); const minutes = Math.floor(timeSeconds / 60); const seconds = timeSeconds % 60; const timeString = `${minutes}m ${seconds}s`; return { questions: reviewQuestions, // Array of simplified result objects summary: { score: scoreString, correct: correctCount, incorrect: incorrectCount, skipped: skippedCount, timeString: timeString }, testDate: new Date().toISOString(), // ISO string for Firestore timeTakenMs: timeMs, sourceChatId: activeChatId, // Link back to the chat where test was started testTitle: testTitle.textContent, // Get title from the test view header originalMCQs: mcqs // Keep the full original MCQ data with translations }; }
-        function displayReview(reviewData) { reviewContent.innerHTML = ''; reviewSummary.innerHTML = ''; reviewFilters.style.display = 'none'; // Hide filters initially if (!reviewData?.questions?.length || !reviewData.summary || !reviewData.originalMCQs) { reviewSummary.innerHTML = "<span>No review data available.</span>"; saveReviewBtn.style.display = 'none'; return; } // Set language toggle state const expectedToggleText = (currentReviewLanguage === 'en') ? 'தமிழ்' : 'English'; if (!reviewLanguageToggle || reviewLanguageToggle.textContent !== expectedToggleText) { currentReviewLanguage = 'en'; // Default to English if state is inconsistent if (reviewLanguageToggle) reviewLanguageToggle.textContent = 'தமிழ்'; } const { score, correct, incorrect, skipped, timeString } = reviewData.summary; reviewSummary.innerHTML = `<span>Score: ${score}</span> <span class="score-correct">Correct: ${correct}</span> <span class="score-incorrect">Incorrect: ${incorrect}</span> <span class="score-skipped">Skipped: ${skipped}</span> <span>Time: ${timeString}</span>`; reviewTitle.textContent = reviewData.testTitle || "Test Review"; const lang = currentReviewLanguage; // 'en' or 'ta' reviewData.questions.forEach((qSummary, index) => { const originalQuestion = reviewData.originalMCQs[index]; if (!originalQuestion) { console.warn(`Missing original MCQ data for index ${index}`); return; // Skip if original data is missing } const questionText = originalQuestion.question?.[lang] || originalQuestion.question?.en || '?'; const options = originalQuestion.options || []; const correctAnswerLetter = originalQuestion.answer?.trim().toUpperCase(); const correctAnswerIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 'A'.charCodeAt(0) : -1; const correctAnswerText = (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) ? (options[correctAnswerIndex]?.[lang] || options[correctAnswerIndex]?.en) : "N/A"; let userAnswerText = qSummary.userAnswer; // Base English text const status = qSummary.status; // Convert user answer to selected language if not skipped/invalid if (status !== 'skipped' && status !== 'invalid') { const userAnswerEn = qSummary.userAnswer; // Find the index based on the English answer stored const userAnswerIndex = options.findIndex(opt => opt.en === userAnswerEn); if (userAnswerIndex !== -1) { userAnswerText = options[userAnswerIndex]?.[lang] || options[userAnswerIndex]?.en; // Fallback to English if translation missing } else { userAnswerText = userAnswerEn || '?'; // Fallback if somehow index not found } } else if (status === 'skipped') { userAnswerText = (lang === 'ta') ? "தவிர்க்கப்பட்டது" : "Skipped"; } else { userAnswerText = (lang === 'ta') ? "தவறான தேர்வு" : "Invalid"; } const explanationText = originalQuestion.explanation?.[lang] || originalQuestion.explanation?.en || "No explanation provided."; let itemStatusClass = `status-${status}`; let answerDetailClass = `user-answer-${status}`; const reviewItem = document.createElement('div'); reviewItem.classList.add('review-item', itemStatusClass); reviewItem.dataset.status = status; // For filtering let detailsHtml = `<span class="${answerDetailClass}">Your Answer / உங்கள் பதில்: ${userAnswerText}</span>`; if (status !== 'correct') { detailsHtml += `<br><span class="correct-answer">Correct Answer / சரியான பதில்: ${correctAnswerText}</span>`; } detailsHtml += `<div class="review-item-explanation">Explanation / விளக்கம்: ${explanationText}</div>`; reviewItem.innerHTML = `<div class="review-item-qnum">Question ${index + 1}</div> <div class="review-item-question">${questionText}</div> <div class="review-item-details">${detailsHtml}</div>`; reviewContent.appendChild(reviewItem); }); // Show filters if there are incorrect or skipped answers if (incorrect > 0 || skipped > 0) { reviewFilters.style.display = 'block'; } else { reviewFilters.style.display = 'none'; } // Update Save button state if (reviewData.savedAt) { // Check if already saved (e.g., loading from sidebar) saveReviewBtn.textContent = "Saved / சேமிக்கப்பட்டது"; saveReviewBtn.disabled = true; saveReviewBtn.style.display = 'inline-block'; } else if (reviewResultsCache && !cameFromAllTestsList) { // If just finished test and not viewing from list saveReviewBtn.textContent = "Save Review / மதிப்பாய்வைச் சேமி"; saveReviewBtn.disabled = !currentUser; // Can only save if logged in saveReviewBtn.style.display = 'inline-block'; } else { // Viewing from list, don't show save button saveReviewBtn.style.display = 'none'; } // Activate 'All' filter by default filterReviewItems('all'); reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === 'all'); }); // Render MathJax if needed try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([reviewContent]).catch(err=>console.error('MathJax Review Error:', err)); } } catch (e) { console.error("MathJax call failed in review:", e); } }
+        // (No changes needed here)
+        function toggleReviewLanguage() { currentReviewLanguage = (currentReviewLanguage === 'en') ? 'ta' : 'en'; reviewLanguageToggle.textContent = (currentReviewLanguage === 'en') ? 'தமிழ்' : 'English'; if (reviewResultsCache) { displayReview(reviewResultsCache); } }
+        function calculateResults(mcqs, answers, timeMs) { let correctCount = 0; let incorrectCount = 0; let skippedCount = 0; const reviewQuestions = []; mcqs.forEach((questionData, index) => { const userAnswerIndex = answers[index]; const options = questionData.options || []; const correctAnswerLetter = questionData.answer?.trim().toUpperCase(); const correctAnswerIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 'A'.charCodeAt(0) : -1; const correctAnswerTextEn = (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) ? (options[correctAnswerIndex]?.en || '?') : "N/A"; let userAnswerTextEn = "Skipped"; let status = "skipped"; if (userAnswerIndex !== null && userAnswerIndex >= 0 && userAnswerIndex < options.length) { userAnswerTextEn = options[userAnswerIndex]?.en || '?'; if (userAnswerIndex === correctAnswerIndex) { status = "correct"; correctCount++; } else { status = "incorrect"; incorrectCount++; } } else if (userAnswerIndex !== null) { userAnswerTextEn = "Invalid"; status = "incorrect"; incorrectCount++; } else { skippedCount++; } reviewQuestions.push({ question: questionData.question?.en || '?', correctAnswer: correctAnswerTextEn, userAnswer: userAnswerTextEn, status: status, explanation: questionData.explanation?.en || "N/A" }); }); const totalQuestions = mcqs.length; const scoreString = `${correctCount}/${totalQuestions}`; const timeSeconds = Math.round(timeMs / 1000); const minutes = Math.floor(timeSeconds / 60); const seconds = timeSeconds % 60; const timeString = `${minutes}m ${seconds}s`; return { questions: reviewQuestions, summary: { score: scoreString, correct: correctCount, incorrect: incorrectCount, skipped: skippedCount, timeString: timeString }, testDate: new Date().toISOString(), timeTakenMs: timeMs, sourceChatId: activeChatId, testTitle: testTitle.textContent, originalMCQs: mcqs }; }
+        function displayReview(reviewData) { reviewContent.innerHTML = ''; reviewSummary.innerHTML = ''; reviewFilters.style.display = 'none'; if (!reviewData?.questions?.length || !reviewData.summary || !reviewData.originalMCQs) { reviewSummary.innerHTML = "<span>No review data available.</span>"; saveReviewBtn.style.display = 'none'; return; } const expectedToggleText = (currentReviewLanguage === 'en') ? 'தமிழ்' : 'English'; if (!reviewLanguageToggle || reviewLanguageToggle.textContent !== expectedToggleText) { currentReviewLanguage = 'en'; if (reviewLanguageToggle) reviewLanguageToggle.textContent = 'தமிழ்'; } const { score, correct, incorrect, skipped, timeString } = reviewData.summary; reviewSummary.innerHTML = `<span>Score: ${score}</span> <span class="score-correct">Correct: ${correct}</span> <span class="score-incorrect">Incorrect: ${incorrect}</span> <span class="score-skipped">Skipped: ${skipped}</span> <span>Time: ${timeString}</span>`; reviewTitle.textContent = reviewData.testTitle || "Test Review"; const lang = currentReviewLanguage; reviewData.questions.forEach((qSummary, index) => { const originalQuestion = reviewData.originalMCQs[index]; if (!originalQuestion) { console.warn(`Missing original MCQ data for review index ${index}`); return; } const questionText = originalQuestion.question?.[lang] || originalQuestion.question?.en || '?'; const options = originalQuestion.options || []; const correctAnswerLetter = originalQuestion.answer?.trim().toUpperCase(); const correctAnswerIndex = correctAnswerLetter ? correctAnswerLetter.charCodeAt(0) - 'A'.charCodeAt(0) : -1; const correctAnswerText = (correctAnswerIndex >= 0 && correctAnswerIndex < options.length) ? (options[correctAnswerIndex]?.[lang] || options[correctAnswerIndex]?.en) : "N/A"; let userAnswerText = qSummary.userAnswer; const status = qSummary.status; if (status !== 'skipped' && status !== 'invalid') { const userAnswerEn = qSummary.userAnswer; const userAnswerIndex = options.findIndex(opt => opt.en === userAnswerEn); if (userAnswerIndex !== -1) { userAnswerText = options[userAnswerIndex]?.[lang] || options[userAnswerIndex]?.en; } else { userAnswerText = userAnswerEn || '?'; } } else if (status === 'skipped') { userAnswerText = (lang === 'ta') ? "தவிர்க்கப்பட்டது" : "Skipped"; } else { userAnswerText = (lang === 'ta') ? "தவறான தேர்வு" : "Invalid"; } const explanationText = originalQuestion.explanation?.[lang] || originalQuestion.explanation?.en || "No explanation provided."; let itemStatusClass = `status-${status}`; let answerDetailClass = `user-answer-${status}`; const reviewItem = document.createElement('div'); reviewItem.classList.add('review-item', itemStatusClass); reviewItem.dataset.status = status; let detailsHtml = `<span class="${answerDetailClass}">Your Answer / உங்கள் பதில்: ${userAnswerText}</span>`; if (status !== 'correct') { detailsHtml += `<br><span class="correct-answer">Correct Answer / சரியான பதில்: ${correctAnswerText}</span>`; } detailsHtml += `<div class="review-item-explanation">Explanation / விளக்கம்: ${explanationText}</div>`; reviewItem.innerHTML = `<div class="review-item-qnum">Question ${index + 1}</div> <div class="review-item-question">${questionText}</div> <div class="review-item-details">${detailsHtml}</div>`; reviewContent.appendChild(reviewItem); }); if (incorrect > 0 || skipped > 0) { reviewFilters.style.display = 'block'; } else { reviewFilters.style.display = 'none'; } if (reviewData.savedAt) { saveReviewBtn.textContent = "Saved / சேமிக்கப்பட்டது"; saveReviewBtn.disabled = true; saveReviewBtn.style.display = 'inline-block'; } else if (reviewResultsCache && !cameFromAllTestsList) { saveReviewBtn.textContent = "Save Review / மதிப்பாய்வைச் சேமி"; saveReviewBtn.disabled = !currentUser; saveReviewBtn.style.display = 'inline-block'; } else { saveReviewBtn.style.display = 'none'; } filterReviewItems('all'); reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === 'all'); }); try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([reviewContent]).catch(err=>console.error('MathJax Review Error:', err)); } } catch (e) { console.error("MathJax call failed in review:", e); } }
         function handleReviewFilterClick(event) { const button = event.target.closest('button[data-filter]'); if (button) { filterReviewItems(button.dataset.filter); } }
         function filterReviewItems(filter) { reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === filter); }); reviewContent.querySelectorAll('.review-item').forEach(item => { const show = (filter === 'all') || item.dataset.status === filter; item.classList.toggle('hidden-by-filter', !show); }); }
-        function exitReview() { reviewResultsCache = null; // Clear cache switchView('chat'); // Go back to chat view // Reset review UI elements reviewSummary.innerHTML = ''; reviewContent.innerHTML = ''; reviewTitle.textContent = 'Review'; if (reviewLanguageToggle) reviewLanguageToggle.textContent = 'தமிழ்'; // Reset language toggle currentReviewLanguage = 'en'; }
-        async function saveTestReviewToCloud() { if (!currentUser) { alert("Please log in to save the review.\nமதிப்பாய்வைச் சேமிக்க உள்நுழையவும்."); return; } if (!reviewResultsCache || reviewResultsCache.savedAt) { alert("No new review data to save or already saved.\nசேமிக்க புதிய மதிப்பாய்வுத் தரவு இல்லை அல்லது ஏற்கனவே சேமிக்கப்பட்டது."); return; } // Sanity check for essential data if (!reviewResultsCache.originalMCQs?.length || !reviewResultsCache.summary) { if (!confirm("Warning: Review data seems incomplete. Save anyway?\nஎச்சரிக்கை: மதிப்பாய்வுத் தரவு முழுமையற்றதாகத் தெரிகிறது. எப்படியும் சேமிக்கவா?")) { return; } } const dataToSave = { ...reviewResultsCache, userId: currentUser.uid, // Ensure userId is included savedAt: firebase.firestore.FieldValue.serverTimestamp(), // Add saved timestamp }; saveReviewBtn.disabled = true; saveReviewBtn.textContent = "Saving... / சேமிக்கிறது..."; try { const newReviewRef = await db.collection('testReviews').add(dataToSave); console.log("Review saved successfully:", newReviewRef.id); alert("Review saved! / மதிப்பாய்வு சேமிக்கப்பட்டது!"); saveReviewBtn.textContent = "Saved / சேமிக்கப்பட்டது"; if (reviewResultsCache) reviewResultsCache.savedAt = new Date(); // Mark cache as saved (using client date) } catch (error) { console.error("Error saving review:", error); alert("Failed to save review.\nமதிப்பாய்வைச் சேமிக்க முடியவில்லை."); saveReviewBtn.disabled = false; // Re-enable on error saveReviewBtn.textContent = "Save Review / மதிப்பாய்வைச் சேமி"; } }
+        function exitReview() { reviewResultsCache = null; switchView('chat'); reviewSummary.innerHTML = ''; reviewContent.innerHTML = ''; reviewTitle.textContent = 'Review'; if (reviewLanguageToggle) reviewLanguageToggle.textContent = 'தமிழ்'; currentReviewLanguage = 'en'; }
+        async function saveTestReviewToCloud() { if (!currentUser) { alert("Please log in to save the review.\nமதிப்பாய்வைச் சேமிக்க உள்நுழையவும்."); return; } if (!reviewResultsCache || reviewResultsCache.savedAt) { alert("No new review data to save or already saved.\nசேமிக்க புதிய மதிப்பாய்வுத் தரவு இல்லை அல்லது ஏற்கனவே சேமிக்கப்பட்டது."); return; } if (!reviewResultsCache.originalMCQs?.length || !reviewResultsCache.summary) { if (!confirm("Warning: Review data seems incomplete. Save anyway?\nஎச்சரிக்கை: மதிப்பாய்வுத் தரவு முழுமையற்றதாகத் தெரிகிறது. எப்படியும் சேமிக்கவா?")) { return; } } const dataToSave = { ...reviewResultsCache, userId: currentUser.uid, savedAt: firebase.firestore.FieldValue.serverTimestamp(), }; saveReviewBtn.disabled = true; saveReviewBtn.textContent = "Saving... / சேமிக்கிறது..."; try { const newReviewRef = await db.collection('testReviews').add(dataToSave); console.log("Review saved successfully:", newReviewRef.id); alert("Review saved! / மதிப்பாய்வு சேமிக்கப்பட்டது!"); saveReviewBtn.textContent = "Saved / சேமிக்கப்பட்டது"; if (reviewResultsCache) reviewResultsCache.savedAt = new Date(); } catch (error) { console.error("Error saving review:", error); alert("Failed to save review.\nமதிப்பாய்வைச் சேமிக்க முடியவில்லை."); saveReviewBtn.disabled = false; saveReviewBtn.textContent = "Save Review / மதிப்பாய்வைச் சேமி"; } }
 
 
         // --- All Tests List Functions ---
-        // (No changes needed here, copy from previous version)
-        function loadAndListenForTests(userId) { if (testListListener) { testListListener(); testListListener = null; } const testsRef = db.collection('testReviews').where('userId', '==', userId).orderBy('savedAt', 'desc'); console.log(`Listening for saved tests for user ${userId}`); testListListener = testsRef.onSnapshot(snapshot => { allSavedTestsData = []; snapshot.forEach(doc => { allSavedTestsData.push({ id: doc.id, ...doc.data() }); }); console.log("Received saved tests snapshot:", allSavedTestsData.length, "tests"); renderAllTestsList(allSavedTestsData); filterTestsInSidebar(); // Apply current filter if any }, error => { console.error("Error listening for saved tests:", error); allTestsListContainer.innerHTML = `<div style="padding:10px; color:var(--error-text);">Error loading saved tests.</div>`; allSavedTestsData = []; }); }
-        function renderAllTestsList(tests) { allTestsListContainer.innerHTML = ''; if (!currentUser) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Login to see tests.</div>'; return; } if (tests.length === 0) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No saved tests found.</div>'; } else { tests.forEach(testData => { const item = document.createElement('div'); item.classList.add('test-list-item'); item.dataset.reviewId = testData.id; const title = testData.testTitle || '(Untitled Test)'; const date = testData.savedAt?.toDate ? testData.savedAt.toDate().toLocaleString() : 'Unknown date'; const score = testData.summary?.score || 'N/A'; // Check if reattempt is possible (basic check for originalMCQs) const hasReattemptData = testData.originalMCQs?.length > 0 && testData.originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); const infoDiv = document.createElement('div'); infoDiv.classList.add('test-item-info'); const titleSpan = document.createElement('span'); titleSpan.classList.add('test-item-title'); titleSpan.textContent = title; titleSpan.title = title; // Tooltip for long titles const detailSpan = document.createElement('span'); detailSpan.classList.add('test-item-details'); detailSpan.textContent = `Saved: ${date} | Score: ${score}`; const controlsDiv = document.createElement('div'); controlsDiv.classList.add('test-item-controls'); const editButton = document.createElement('button'); editButton.innerHTML = EDIT_TEST_ICON; editButton.title = "Edit title"; editButton.dataset.action = "edit-title"; controlsDiv.appendChild(editButton); const deleteButton = document.createElement('button'); deleteButton.innerHTML = DELETE_TEST_ICON; deleteButton.title = "Delete test"; deleteButton.dataset.action = "delete-test"; controlsDiv.appendChild(deleteButton); infoDiv.appendChild(titleSpan); infoDiv.appendChild(detailSpan); infoDiv.appendChild(controlsDiv); const actionsDiv = document.createElement('div'); actionsDiv.classList.add('test-item-actions'); const viewButton = document.createElement('button'); viewButton.textContent = "Details / விவரங்கள்"; viewButton.dataset.action = "view"; actionsDiv.appendChild(viewButton); const reattemptSelect = document.createElement('select'); reattemptSelect.dataset.action = "reattempt"; reattemptSelect.disabled = !hasReattemptData; reattemptSelect.title = hasReattemptData ? "Reattempt test / மீண்டும் சோதனை செய்" : "Reattempt data not available"; reattemptSelect.innerHTML = `<option value="" selected>${hasReattemptData ? 'Reattempt... / மீண்டும்...' : 'N/A'}</option> <option value="mistaked" ${!hasReattemptData?'disabled':''}>Mistaked Only / தவறுகள் மட்டும்</option> <option value="skipped" ${!hasReattemptData?'disabled':''}>Skipped Only / தவிர்க்கப்பட்டவை மட்டும்</option> <option value="both" ${!hasReattemptData?'disabled':''}>Mistaked/Skipped / தவறு/தவிர்க்கப்பட்டவை</option> <option value="full" ${!hasReattemptData?'disabled':''}>Full Test / முழு சோதனை</option>`; // Add event listener for reattempt selection reattemptSelect.addEventListener('change', (e) => { const selectedMode = e.target.value; if (selectedMode) { const reviewId = e.target.closest('.test-list-item')?.dataset.reviewId; if (reviewId) { startReattempt(reviewId, selectedMode); } e.target.value = ""; // Reset select after action } }); actionsDiv.appendChild(reattemptSelect); item.appendChild(infoDiv); item.appendChild(actionsDiv); allTestsListContainer.appendChild(item); }); } }
+        // (No changes needed here)
+        function loadAndListenForTests(userId) { if (testListListener) { testListListener(); testListListener = null; } const testsRef = db.collection('testReviews').where('userId', '==', userId).orderBy('savedAt', 'desc'); console.log(`Listening for saved tests for user ${userId}`); testListListener = testsRef.onSnapshot(snapshot => { allSavedTestsData = []; snapshot.forEach(doc => { allSavedTestsData.push({ id: doc.id, ...doc.data() }); }); console.log("Received saved tests snapshot:", allSavedTestsData.length, "tests"); renderAllTestsList(allSavedTestsData); filterTestsInSidebar(); }, error => { console.error("Error listening for saved tests:", error); allTestsListContainer.innerHTML = `<div style="padding:10px; color:var(--error-text);">Error loading saved tests.</div>`; allSavedTestsData = []; }); }
+        function renderAllTestsList(tests) { allTestsListContainer.innerHTML = ''; if (!currentUser) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Login to see tests.</div>'; return; } if (tests.length === 0) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No saved tests found.</div>'; } else { tests.forEach(testData => { const item = document.createElement('div'); item.classList.add('test-list-item'); item.dataset.reviewId = testData.id; const title = testData.testTitle || '(Untitled Test)'; const date = testData.savedAt?.toDate ? testData.savedAt.toDate().toLocaleString() : 'Unknown date'; const score = testData.summary?.score || 'N/A'; const hasReattemptData = testData.originalMCQs?.length > 0 && testData.originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); const infoDiv = document.createElement('div'); infoDiv.classList.add('test-item-info'); const titleSpan = document.createElement('span'); titleSpan.classList.add('test-item-title'); titleSpan.textContent = title; titleSpan.title = title; const detailSpan = document.createElement('span'); detailSpan.classList.add('test-item-details'); detailSpan.textContent = `Saved: ${date} | Score: ${score}`; const controlsDiv = document.createElement('div'); controlsDiv.classList.add('test-item-controls'); const editButton = document.createElement('button'); editButton.innerHTML = EDIT_TEST_ICON; editButton.title = "Edit title"; editButton.dataset.action = "edit-title"; controlsDiv.appendChild(editButton); const deleteButton = document.createElement('button'); deleteButton.innerHTML = DELETE_TEST_ICON; deleteButton.title = "Delete test"; deleteButton.dataset.action = "delete-test"; controlsDiv.appendChild(deleteButton); infoDiv.appendChild(titleSpan); infoDiv.appendChild(detailSpan); infoDiv.appendChild(controlsDiv); const actionsDiv = document.createElement('div'); actionsDiv.classList.add('test-item-actions'); const viewButton = document.createElement('button'); viewButton.textContent = "Details / விவரங்கள்"; viewButton.dataset.action = "view"; actionsDiv.appendChild(viewButton); const reattemptSelect = document.createElement('select'); reattemptSelect.dataset.action = "reattempt"; reattemptSelect.disabled = !hasReattemptData; reattemptSelect.title = hasReattemptData ? "Reattempt test / மீண்டும் சோதனை செய்" : "Reattempt data not available"; reattemptSelect.innerHTML = `<option value="" selected>${hasReattemptData ? 'Reattempt... / மீண்டும்...' : 'N/A'}</option> <option value="mistaked" ${!hasReattemptData?'disabled':''}>Mistaked Only / தவறுகள் மட்டும்</option> <option value="skipped" ${!hasReattemptData?'disabled':''}>Skipped Only / தவிர்க்கப்பட்டவை மட்டும்</option> <option value="both" ${!hasReattemptData?'disabled':''}>Mistaked/Skipped / தவறு/தவிர்க்கப்பட்டவை</option> <option value="full" ${!hasReattemptData?'disabled':''}>Full Test / முழு சோதனை</option>`; reattemptSelect.addEventListener('change', (e) => { const selectedMode = e.target.value; if (selectedMode) { const reviewId = e.target.closest('.test-list-item')?.dataset.reviewId; if (reviewId) { startReattempt(reviewId, selectedMode); } e.target.value = ""; } }); actionsDiv.appendChild(reattemptSelect); item.appendChild(infoDiv); item.appendChild(actionsDiv); allTestsListContainer.appendChild(item); }); } }
         function filterTestsInSidebar() { const searchTerm = testSearchInput.value.toLowerCase().trim(); const items = allTestsListContainer.querySelectorAll('.test-list-item'); let visibleCount = 0; const noResultsMsg = allTestsListContainer.querySelector('.no-search-results'); if (noResultsMsg) { noResultsMsg.remove(); } items.forEach(item => { const title = item.querySelector('.test-item-title')?.textContent.toLowerCase() || ''; const details = item.querySelector('.test-item-details')?.textContent.toLowerCase() || ''; const isMatch = title.includes(searchTerm) || details.includes(searchTerm); item.classList.toggle('hidden-by-search', !isMatch); if (isMatch) visibleCount++; }); if (visibleCount === 0 && searchTerm !== '' && items.length > 0) { const msgDiv = document.createElement('div'); msgDiv.textContent = "No saved tests match your search."; msgDiv.classList.add('no-search-results'); allTestsListContainer.appendChild(msgDiv); } }
-        async function handleAllTestsListClick(event) { const button = event.target.closest('button[data-action]'); if (!button) return; // Ignore clicks not on a button with action const action = button.dataset.action; const listItem = button.closest('.test-list-item'); const reviewId = listItem?.dataset.reviewId; if (!reviewId) { console.error("Could not find review ID for action:", action); return; } switch (action) { case "view": const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (reviewData) { reviewResultsCache = reviewData; // Load the data into cache switchView('review', true); // Switch to review view, indicating came from list displayReview(reviewData); // Display the loaded data } else { alert("Error: Could not find review data to display."); } break; case "edit-title": enterTestTitleEditMode(listItem, reviewId); break; case "delete-test": const testTitle = listItem.querySelector('.test-item-title')?.textContent || 'this test'; if (confirm(`Are you sure you want to delete the test "${testTitle}"?\n"${testTitle}" என்ற சோதனையை நீக்க விரும்புகிறீர்களா?`)) { deleteSavedTest(reviewId, listItem); } break; // Note: Reattempt is handled by the select element's change listener } }
-        function enterTestTitleEditMode(listItem, reviewId) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const currentTitle = titleSpan.textContent; // Hide original elements titleSpan.style.display = 'none'; detailSpan.style.display = 'none'; if(controlsDiv) controlsDiv.style.display = 'none'; // Prevent multiple edit modes if (infoDiv.querySelector('.test-item-edit-mode')) return; const editContainer = document.createElement('div'); editContainer.classList.add('test-item-edit-mode'); const input = document.createElement('input'); input.type = 'text'; input.value = currentTitle; input.maxLength = 100; input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { saveTestTitle(listItem, reviewId, input.value); } else if (e.key === 'Escape') { exitTestTitleEditMode(listItem, currentTitle); } }); const saveButton = document.createElement('button'); saveButton.textContent = 'Save'; saveButton.onclick = () => saveTestTitle(listItem, reviewId, input.value); const cancelButton = document.createElement('button'); cancelButton.textContent = 'Cancel'; cancelButton.onclick = () => exitTestTitleEditMode(listItem, currentTitle); editContainer.appendChild(input); editContainer.appendChild(saveButton); editContainer.appendChild(cancelButton); infoDiv.appendChild(editContainer); input.focus(); input.select(); }
-        function exitTestTitleEditMode(listItem, originalTitle = null) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const editContainer = infoDiv.querySelector('.test-item-edit-mode'); // Remove edit container if it exists if (editContainer) editContainer.remove(); // Restore original title if provided if (originalTitle !== null && titleSpan) { titleSpan.textContent = originalTitle; titleSpan.title = originalTitle; } // Show original elements if(titleSpan) titleSpan.style.display = ''; if(detailSpan) detailSpan.style.display = ''; if(controlsDiv) controlsDiv.style.display = ''; }
-        async function saveTestTitle(listItem, reviewId, newTitle) { const trimmedTitle = newTitle.trim(); if (!trimmedTitle) { alert("Test title cannot be empty.\nசோதனைத் தலைப்பு காலியாக இருக்கக்கூடாது."); return; } if (trimmedTitle.length > 100) { alert("Test title is too long (max 100 characters).\nசோதனைத் தலைப்பு மிகவும் நீளமானது (அதிகபட்சம் 100 எழுத்துக்கள்)."); return; } const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.update({ testTitle: trimmedTitle }); console.log("Test title updated successfully:", reviewId); const titleSpan = listItem.querySelector('.test-item-title'); if (titleSpan) { titleSpan.textContent = trimmedTitle; titleSpan.title = trimmedTitle; } // Update local cache as well const testIndex = allSavedTestsData.findIndex(t => t.id === reviewId); if (testIndex > -1) allSavedTestsData[testIndex].testTitle = trimmedTitle; exitTestTitleEditMode(listItem); // Exit edit mode } catch (error) { console.error("Error updating test title:", error); alert("Failed to update test title.\nசோதனைத் தலைப்பைப் புதுப்பிக்க முடியவில்லை."); } }
-        async function deleteSavedTest(reviewId, listItem) { if (!currentUser || !reviewId) return; // Visually indicate deletion attempt listItem.style.opacity = '0.5'; listItem.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.delete(); console.log("Saved test deleted successfully:", reviewId); // Remove from local cache immediately allSavedTestsData = allSavedTestsData.filter(t => t.id !== reviewId); // No need to re-render entire list, listener will handle removal alert("Saved test deleted. / சேமிக்கப்பட்ட சோதனை நீக்கப்பட்டது."); // Listener will remove the element from UI } catch (error) { console.error("Error deleting saved test:", error); alert("Failed to delete saved test.\nசேமிக்கப்பட்ட சோதனையை நீக்க முடியவில்லை."); // Restore appearance on error listItem.style.opacity = '1'; listItem.style.pointerEvents = 'auto'; } }
-        async function startReattempt(reviewId, mode) { console.log(`Attempting reattempt for review ID: ${reviewId}, Mode: ${mode}`); const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (!reviewData) { alert("Error: Could not find the saved review data for reattempt."); return; } const originalMCQs = reviewData.originalMCQs; const hasValidData = originalMCQs?.length > 0 && originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); if (!hasValidData) { alert("Error: Cannot reattempt. Original test data is missing or invalid."); return; } const summaryQuestions = reviewData.questions || []; // Simplified results let questionsForReattempt = []; switch (mode) { case 'mistaked': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect'); break; case 'skipped': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'skipped'); break; case 'both': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect' || summaryQuestions[index]?.status === 'skipped'); break; case 'full': default: questionsForReattempt = [...originalMCQs]; break; } if (questionsForReattempt.length === 0) { alert(`No questions found for the selected reattempt mode ('${mode}').\nதேர்ந்தெடுக்கப்பட்ட மறுமுயற்சி முறைக்கு ('${mode}') கேள்விகள் எதுவும் இல்லை.`); return; } // Construct a new title for the reattempt const originalTitle = reviewData.testTitle || 'Test'; const reattemptTitle = `${originalTitle} (Reattempt: ${mode})`; // Start the mock test with the filtered questions startMockTest(questionsForReattempt, reattemptTitle); }
+        async function handleAllTestsListClick(event) { const button = event.target.closest('button[data-action]'); if (!button) return; const action = button.dataset.action; const listItem = button.closest('.test-list-item'); const reviewId = listItem?.dataset.reviewId; if (!reviewId) { console.error("Could not find review ID for action:", action); return; } switch (action) { case "view": const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (reviewData) { reviewResultsCache = reviewData; switchView('review', true); displayReview(reviewData); } else { alert("Error: Could not find review data to display."); } break; case "edit-title": enterTestTitleEditMode(listItem, reviewId); break; case "delete-test": const testTitle = listItem.querySelector('.test-item-title')?.textContent || 'this test'; if (confirm(`Are you sure you want to delete the test "${testTitle}"?\n"${testTitle}" என்ற சோதனையை நீக்க விரும்புகிறீர்களா?`)) { deleteSavedTest(reviewId, listItem); } break; } }
+        function enterTestTitleEditMode(listItem, reviewId) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const currentTitle = titleSpan.textContent; titleSpan.style.display = 'none'; detailSpan.style.display = 'none'; if(controlsDiv) controlsDiv.style.display = 'none'; if (infoDiv.querySelector('.test-item-edit-mode')) return; const editContainer = document.createElement('div'); editContainer.classList.add('test-item-edit-mode'); const input = document.createElement('input'); input.type = 'text'; input.value = currentTitle; input.maxLength = 100; input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { saveTestTitle(listItem, reviewId, input.value); } else if (e.key === 'Escape') { exitTestTitleEditMode(listItem, currentTitle); } }); const saveButton = document.createElement('button'); saveButton.textContent = 'Save'; saveButton.onclick = () => saveTestTitle(listItem, reviewId, input.value); const cancelButton = document.createElement('button'); cancelButton.textContent = 'Cancel'; cancelButton.onclick = () => exitTestTitleEditMode(listItem, currentTitle); editContainer.appendChild(input); editContainer.appendChild(saveButton); editContainer.appendChild(cancelButton); infoDiv.appendChild(editContainer); input.focus(); input.select(); }
+        function exitTestTitleEditMode(listItem, originalTitle = null) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const editContainer = infoDiv.querySelector('.test-item-edit-mode'); if (editContainer) editContainer.remove(); if (originalTitle !== null && titleSpan) { titleSpan.textContent = originalTitle; titleSpan.title = originalTitle; } if(titleSpan) titleSpan.style.display = ''; if(detailSpan) detailSpan.style.display = ''; if(cD) cD.style.display = ''; }
+        async function saveTestTitle(listItem, reviewId, newTitle) { const trimmedTitle = newTitle.trim(); if (!trimmedTitle) { alert("Test title cannot be empty.\nசோதனைத் தலைப்பு காலியாக இருக்கக்கூடாது."); return; } if (trimmedTitle.length > 100) { alert("Test title is too long (max 100 characters).\nசோதனைத் தலைப்பு மிகவும் நீளமானது (அதிகபட்சம் 100 எழுத்துக்கள்)."); return; } const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.update({ testTitle: trimmedTitle }); console.log("Test title updated successfully:", reviewId); const titleSpan = listItem.querySelector('.test-item-title'); if (titleSpan) { titleSpan.textContent = trimmedTitle; titleSpan.title = trimmedTitle; } const testIndex = allSavedTestsData.findIndex(t => t.id === reviewId); if (testIndex > -1) allSavedTestsData[testIndex].testTitle = trimmedTitle; exitTestTitleEditMode(listItem); } catch (error) { console.error("Error updating test title:", error); alert("Failed to update test title.\nசோதனைத் தலைப்பைப் புதுப்பிக்க முடியவில்லை."); } }
+        async function deleteSavedTest(reviewId, listItem) { if (!currentUser || !reviewId) return; listItem.style.opacity = '0.5'; listItem.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.delete(); console.log("Saved test deleted successfully:", reviewId); allSavedTestsData = allSavedTestsData.filter(t => t.id !== reviewId); alert("Saved test deleted. / சேமிக்கப்பட்ட சோதனை நீக்கப்பட்டது."); } catch (error) { console.error("Error deleting saved test:", error); alert("Failed to delete saved test.\nசேமிக்கப்பட்ட சோதனையை நீக்க முடியவில்லை."); listItem.style.opacity = '1'; listItem.style.pointerEvents = 'auto'; } }
+        async function startReattempt(reviewId, mode) { console.log(`Attempting reattempt for review ID: ${reviewId}, Mode: ${mode}`); const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (!reviewData) { alert("Error: Could not find the saved review data for reattempt."); return; } const originalMCQs = reviewData.originalMCQs; const hasValidData = originalMCQs?.length > 0 && originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); if (!hasValidData) { alert("Error: Cannot reattempt. Original test data is missing or invalid."); return; } const summaryQuestions = reviewData.questions || []; let questionsForReattempt = []; switch (mode) { case 'mistaked': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect'); break; case 'skipped': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'skipped'); break; case 'both': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect' || summaryQuestions[index]?.status === 'skipped'); break; case 'full': default: questionsForReattempt = [...originalMCQs]; break; } if (questionsForReattempt.length === 0) { alert(`No questions found for the selected reattempt mode ('${mode}').\nதேர்ந்தெடுக்கப்பட்ட மறுமுயற்சி முறைக்கு ('${mode}') கேள்விகள் எதுவும் இல்லை.`); return; } const originalTitle = reviewData.testTitle || 'Test'; const reattemptTitle = `${originalTitle} (Reattempt: ${mode})`; startMockTest(questionsForReattempt, reattemptTitle); }
 
 
     </script>
