@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Version Updated -->
-    <title>Gemini Chat + Mock Test (v9.6 - Multi-Image & Fixes)</title>
+    <title>Gemini Chat + Mock Test (v9.7 - PDF Upload)</title>
     <script>
         window.MathJax = {
             tex: { inlineMath: [['$', '$'], ['\\(', '\\)']], displayMath: [['$$', '$$'], ['\\[', '\\]']] },
@@ -20,7 +20,7 @@
     <!-- <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script> -->
 
     <style>
-        /* --- Styles (v9.6 - Multi-Image Preview Styles Added) --- */
+        /* --- Styles (v9.7 - PDF Preview Styles Added) --- */
         :root { /* ... Theme Variables ... */
              --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; --sidebar-width: 260px; --message-font-size-base: 1rem;
             /* LIGHT */ --sidebar-bg: #f7f7f7; --main-bg: #ffffff; --input-bg: #ffffff; --border-color: #e0e0e0; --text-primary: #2c2c2c; --text-secondary: #5f5f5f; --text-placeholder: #999999; --accent-color: #d97a7a; --user-message-bg: #cce0ff; --user-message-text: #1c1c1c; --ai-message-bg: #f0f0f0; --ai-message-text: #2c2c2c; --button-bg: #f0f0f0; --button-hover-bg: #e0e0e0; --active-item-bg: #e0e0e0; --code-bg: #e8e8e8; --scrollbar-thumb: #ccc; --scrollbar-thumb-hover: #bbb; --app-outer-bg: #e8e8e8; --send-button-bg: var(--accent-color); --send-button-hover-bg: #c76b6b; --send-button-text: #ffffff; --error-bg: #ffebee; --error-text: #c62828; --error-border: #ef9a9a; --message-font-size: var(--message-font-size-base); --delete-button-color: #aaa; --delete-button-hover-color: #dc3545; --input-border-color: var(--border-color); --input-focus-border-color: var(--accent-color); --preview-bg: var(--button-bg); --preview-border: var(--border-color); --remove-btn-color: var(--text-secondary); --remove-btn-hover-color: var(--error-text);
@@ -59,7 +59,7 @@
          .test-item-info { font-size: 0.9em; color: var(--text-primary); position: relative; padding-right: 50px; }
          .test-item-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
          .test-item-details { font-size: 0.8em; color: var(--text-secondary); }
-         .test-item-actions { display: flex; justify-content: flex-start; gap: 8px; margin-top: 5px; /* Add some space */ }
+         .test-item-actions { display: flex; justify-content: flex-start; gap: 8px; margin-top: 5px; }
          .test-item-actions button, .test-item-actions select { background-color: var(--main-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; padding: 4px 8px; font-size: 0.8em; cursor: pointer; transition: background-color 0.2s ease, color 0.2s ease; }
          .test-item-actions button:hover, .test-item-actions select:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
          .test-item-actions select:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -111,17 +111,17 @@
         .ai-message.thinking { background-color: transparent; color: var(--text-secondary); font-style: italic; }
         .error-message { background-color: var(--error-bg); color: var(--error-text); border: 1px solid var(--error-border); align-self: flex-start; transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;}
         .info-message { text-align: center; color: var(--text-secondary); padding: 50px 20px; font-style: italic; }
-        /* Display message with multiple images indicator */
-        .message .multi-image-indicator { font-size: 0.9em; color: var(--text-secondary); margin-top: 8px; display: block; font-style: italic;}
+        /* Display message media indicators */
+        .message .multi-image-indicator, .message .multi-pdf-indicator { font-size: 0.9em; color: var(--text-secondary); margin-top: 8px; display: block; font-style: italic;}
         .message mjx-container { color: inherit !important; font-size: inherit !important; }
         /* Embedded Images & Videos */
         .message img.chat-image, .message img.uploaded-image { max-width: 100%; height: auto; border-radius: 8px; margin-top: 8px; cursor: pointer; display: block; }
-        .message img.uploaded-image { border: 1px solid var(--border-color); margin-bottom: 5px; /* Space between uploaded img and text */ }
+        .message img.uploaded-image { border: 1px solid var(--border-color); margin-bottom: 5px; }
         .message .youtube-embed-container { margin-top: 10px; }
         .message iframe.chat-video { max-width: 100%; aspect-ratio: 16 / 9; border: none; border-radius: 8px; }
         /* Audio display in chat */
         .message .chat-audio-player { margin-top: 10px; width: 100%; max-width: 350px; }
-        .message .chat-audio-player audio { width: 100%; height: 40px; border-radius: 20px; /* Optional styling */ }
+        .message .chat-audio-player audio { width: 100%; height: 40px; border-radius: 20px; }
 
         /* Input Area Elements */
         .suggestions { display: none; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
@@ -131,9 +131,9 @@
         .input-box:focus-within { border-color: var(--input-focus-border-color); }
         /* Input Buttons */
         .input-buttons { display: flex; align-self: center; margin-right: 5px; gap: 3px; }
-        #image-upload-button, #audio-upload-button, #record-audio-button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.4em; padding: 0 4px; line-height: 1; transition: color 0.2s ease, opacity 0.2s ease; }
-        #image-upload-button:hover, #audio-upload-button:hover, #record-audio-button:hover:not(.recording) { color: var(--text-primary); }
-        #image-upload-button:disabled, #audio-upload-button:disabled, #record-audio-button:disabled:not(.recording) { opacity: 0.5; cursor: not-allowed; color: var(--text-secondary); }
+        #image-upload-button, #audio-upload-button, #record-audio-button, #pdf-upload-button { background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.4em; padding: 0 4px; line-height: 1; transition: color 0.2s ease, opacity 0.2s ease; }
+        #image-upload-button:hover, #audio-upload-button:hover, #record-audio-button:hover:not(.recording), #pdf-upload-button:hover { color: var(--text-primary); }
+        #image-upload-button:disabled, #audio-upload-button:disabled, #record-audio-button:disabled:not(.recording), #pdf-upload-button:disabled { opacity: 0.5; cursor: not-allowed; color: var(--text-secondary); }
         #record-audio-button.recording { color: var(--record-button-bg); animation: pulse 1.5s infinite; }
         #record-audio-button.recording:disabled { color: var(--stop-button-bg); opacity: 0.7; animation: none; cursor: default; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
@@ -149,20 +149,26 @@
         #send-button svg { width: 20px; height: 20px; fill: currentColor; }
 
         /* Media Previews */
-        #media-preview-container { margin-bottom: 10px; padding: 8px; background-color: var(--preview-bg); border: 1px solid var(--preview-border); border-radius: 8px; display: none; /* Initially hidden */ flex-direction: column; /* Stack previews and info/remove */ gap: 8px; }
-        /* Container for multiple image thumbnails */
-        #image-previews-list { display: flex; gap: 8px; flex-wrap: wrap; max-height: 120px; /* Limit height */ overflow-y: auto; }
+        #media-preview-container { margin-bottom: 10px; padding: 8px; background-color: var(--preview-bg); border: 1px solid var(--preview-border); border-radius: 8px; display: none; flex-direction: column; gap: 8px; }
+        /* Image Thumbnails */
+        #image-previews-list { display: none; /* Hidden by default */ gap: 8px; flex-wrap: wrap; max-height: 120px; overflow-y: auto; }
         .image-preview-item { position: relative; }
         .image-preview-item img { max-height: 50px; max-width: 80px; height: auto; width: auto; border-radius: 4px; object-fit: cover; display: block; border: 1px solid var(--border-color); }
-        .remove-image-item-button { position: absolute; top: -5px; right: -5px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; line-height: 16px; text-align: center; cursor: pointer; opacity: 0.8; transition: opacity 0.2s ease; }
-        .remove-image-item-button:hover { opacity: 1; }
-        /* Single audio preview */
-        #preview-audio-container { display: flex; align-items: center; gap: 8px; display: none; /* Hidden by default */ }
+        .remove-media-item-button { /* Common class for remove buttons */ position: absolute; top: -5px; right: -5px; background-color: rgba(0, 0, 0, 0.6); color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 10px; line-height: 16px; text-align: center; cursor: pointer; opacity: 0.8; transition: opacity 0.2s ease; padding: 0; }
+        .remove-media-item-button:hover { opacity: 1; }
+        /* PDF List */
+        #pdf-previews-list { display: none; /* Hidden by default */ flex-direction: column; gap: 5px; max-height: 120px; overflow-y: auto; }
+        .pdf-preview-item { display: flex; align-items: center; gap: 5px; background-color: var(--main-bg); padding: 4px 8px; border-radius: 4px; font-size: 0.9em; }
+        .pdf-preview-item span { flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pdf-preview-item button.remove-media-item-button { position: static; /* Override absolute */ background-color: transparent; color: var(--remove-btn-color); opacity: 1; font-size: 1.2em; width: auto; height: auto; line-height: 1; }
+        .pdf-preview-item button.remove-media-item-button:hover { color: var(--remove-btn-hover-color); }
+        /* Single Audio Preview */
+        #preview-audio-container { display: none; /* Hidden by default */ align-items: center; gap: 8px; }
         #preview-audio-container audio { height: 30px; max-width: 250px; }
-        /* Info and Remove All Button */
-        .media-preview-footer { display: flex; align-items: center; width: 100%; }
+        /* Footer: Info and Remove All Button */
+        .media-preview-footer { display: flex; align-items: center; width: 100%; margin-top: 5px; /* Space above footer */ }
         #media-preview-info { font-size: 0.85em; color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-grow: 1; }
-        #remove-media-button { background: none; border: none; color: var(--remove-btn-color); cursor: pointer; font-size: 1.4em; line-height: 1; padding: 0 5px; transition: color 0.2s ease; margin-left: auto; /* Push to the right */ flex-shrink: 0; }
+        #remove-media-button { background: none; border: none; color: var(--remove-btn-color); cursor: pointer; font-size: 1.4em; line-height: 1; padding: 0 5px; transition: color 0.2s ease; margin-left: auto; flex-shrink: 0; }
         #remove-media-button:hover { color: var(--remove-btn-hover-color); }
 
          /* Recording Status */
@@ -175,15 +181,13 @@
          .start-test-button:hover { background-color: var(--send-button-hover-bg); }
 
         /* Mock Test & Review View Styles */
-        /* ... (These remain the same) ... */
+        /* ... (Remain the same, language buttons removed previously) ... */
         .mock-test-view { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--main-bg); z-index: 100; flex-direction: column; padding: 20px; box-sizing: border-box; transition: background-color 0.3s ease; }
         .mock-test-view.active { display: flex; }
         .test-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
         .test-header h2 { margin: 0; font-size: 1.3em; color: var(--text-primary); }
         .test-info { display: flex; align-items: center; }
         .test-info span { margin-left: 15px; font-size: 0.95em; color: var(--text-secondary); }
-        #test-language-toggle, #review-language-toggle { margin-left: 15px; padding: 3px 8px; font-size: 0.8em; cursor: pointer; background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; transition: background-color 0.2s ease, color 0.2s ease; }
-        #test-language-toggle:hover, #review-language-toggle:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
         .test-content { flex-grow: 1; overflow-y: auto; padding: 10px 20px; }
         .test-question-container { margin-bottom: 25px; }
         .test-question-number { font-weight: bold; margin-bottom: 8px; color: var(--text-secondary); }
@@ -233,13 +237,17 @@
             .input-container { padding-top: 10px; padding-bottom: 10px; }
             .message { max-width: 90%; font-size: calc(var(--message-font-size) * 0.95); }
             /* Input buttons responsive */
-            #image-upload-button, #audio-upload-button, #record-audio-button { font-size: 1.3em; padding: 0 3px; }
+            #image-upload-button, #audio-upload-button, #record-audio-button, #pdf-upload-button { font-size: 1.3em; padding: 0 3px; }
              /* Media Preview responsive */
             #media-preview-container { padding: 6px; gap: 6px; }
              /* Image list responsive */
             #image-previews-list { gap: 5px; max-height: 100px; }
             .image-preview-item img { max-height: 40px; }
-            .remove-image-item-button { width: 14px; height: 14px; font-size: 9px; line-height: 14px; }
+            .remove-media-item-button { width: 14px; height: 14px; font-size: 9px; line-height: 14px; }
+             /* PDF list responsive */
+             #pdf-previews-list { gap: 4px; max-height: 100px; }
+             .pdf-preview-item { padding: 3px 6px; font-size: 0.85em; }
+             .pdf-preview-item button.remove-media-item-button { font-size: 1.1em; }
             /* Audio preview responsive */
             #preview-audio-container audio { max-width: 180px; height: 28px; }
             #media-preview-info { font-size: 0.8em; }
@@ -254,7 +262,6 @@
             .test-header h2, .review-header h2 { font-size: 1.1em; margin-bottom: 5px;}
             .test-info, .review-summary { margin-bottom: 5px; }
             .test-info span, .review-summary span { margin-left: 0; margin-right: 10px; font-size: 0.9em; display: inline-block; margin-bottom: 3px;}
-            #test-language-toggle, #review-language-toggle { margin-left: 0; margin-top: 5px; font-size: 0.75em;}
             .test-content, .review-content { padding: 5px; }
             .test-question, .review-item-question { font-size: 1em; }
             .test-options label, .review-item { padding: 10px; font-size: 0.95em;}
@@ -311,16 +318,16 @@
                  </div>
                  <div class="input-container" id="input-container">
                      <div class="suggestions" id="suggestions">
-                          <button class="suggestion-chip" data-prompt="Summarize this audio">Summarize this audio</button>
-                          <button class="suggestion-chip" data-prompt="Transcribe this audio">Transcribe this audio</button>
-                          <button class="suggestion-chip" data-prompt="Describe this image">Describe this image</button>
+                          <button class="suggestion-chip" data-prompt="Summarize this document">Summarize document</button>
+                          <button class="suggestion-chip" data-prompt="Summarize this audio">Summarize audio</button>
+                          <button class="suggestion-chip" data-prompt="Describe this image">Describe image</button>
                      </div>
                     <!-- Media Preview Container -->
                     <div id="media-preview-container">
                         <!-- Image Previews (Multiple) -->
-                        <div id="image-previews-list">
-                            <!-- Thumbnails will be added here by JS -->
-                        </div>
+                        <div id="image-previews-list"></div>
+                        <!-- PDF Previews (Multiple) -->
+                        <div id="pdf-previews-list"></div>
                         <!-- Audio Preview (Single) -->
                         <div id="preview-audio-container">
                            <audio id="preview-audio" controls></audio>
@@ -336,18 +343,20 @@
 
                     <div class="input-box">
                          <!-- Hidden File Inputs -->
-                         <input type="file" id="image-upload-input" accept="image/*" style="display: none;" multiple> <!-- Added multiple -->
+                         <input type="file" id="image-upload-input" accept="image/*" style="display: none;" multiple>
                          <input type="file" id="audio-upload-input" accept="audio/wav, audio/mp3, audio/mpeg, audio/aac, audio/ogg, audio/flac, audio/aiff" style="display: none;">
+                         <input type="file" id="pdf-upload-input" accept="application/pdf" style="display: none;" multiple> <!-- PDF Input -->
 
                          <!-- Buttons -->
                          <div class="input-buttons">
-                             <button id="image-upload-button" title="Upload image(s) (Max 4MB each)" disabled>📎</button>
+                             <button id="image-upload-button" title="Upload image(s) (Max 5, ~16MB total)" disabled>📎</button>
+                             <button id="pdf-upload-button" title="Upload PDF(s) (Max 5, ~18MB total)" disabled>📄</button> <!-- PDF Button -->
                              <button id="audio-upload-button" title="Upload audio file (Max 10MB)" disabled>🎵</button>
                              <button id="record-audio-button" title="Record audio" disabled>🎙️</button>
                          </div>
 
                          <textarea id="user-input" placeholder="Enter prompt, attach media, or paste URL" rows="1"></textarea>
-                         <div class="mcq-mode-control"> <input type="checkbox" id="mcq-mode-checkbox" title="Check to generate MCQs based on your prompt"> <label for="mcq-mode-checkbox">MCQs?</label> </div>
+                         <div class="mcq-mode-control"> <input type="checkbox" id="mcq-mode-checkbox" title="Generate MCQs based on prompt/media"> <label for="mcq-mode-checkbox">MCQs?</label> </div>
                          <button id="send-button" title="Send message" disabled> <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                         </button>
                     </div>
@@ -357,11 +366,7 @@
             <div class="review-view" id="review-view">
                  <div class="review-header">
                      <h2 id="review-title">Test Review</h2>
-                     <div>
-                         <div class="review-summary" id="review-summary"></div>
-                         <!-- Removed Tamil button, keep only English context for now -->
-                         <!-- <button id="review-language-toggle" style="margin-left: 15px; padding: 3px 8px; font-size: 0.8em; vertical-align: middle;">தமிழ்</button> -->
-                      </div>
+                     <div><div class="review-summary" id="review-summary"></div></div>
                      <div class="review-filters" id="review-filters" style="display: none;"> <button data-filter="all" class="active-filter">All</button> <button data-filter="incorrect">Incorrect</button> <button data-filter="skipped">Skipped</button> </div>
                  </div>
                  <div class="review-content" id="review-content"></div>
@@ -373,12 +378,7 @@
     <div class="mock-test-view" id="mock-test-view">
          <div class="test-header">
             <h2 id="test-title">Mock Test</h2>
-            <div class="test-info">
-                <span id="question-counter">Q: 1 / N</span>
-                <span id="test-timer">Time: 00:00</span>
-                <!-- Removed Tamil button -->
-                <!-- <button id="test-language-toggle" style="margin-left: 15px; padding: 3px 8px; font-size: 0.8em;">தமிழ்</button> -->
-             </div>
+            <div class="test-info"> <span id="question-counter">Q: 1 / N</span> <span id="test-timer">Time: 00:00</span> </div>
          </div>
          <div class="test-content">
             <div class="test-question-container"> <div class="test-question-number" id="test-question-number"></div> <div class="test-question" id="test-question"></div> <div class="test-options" id="test-options"></div> </div>
@@ -404,7 +404,6 @@
         firebase.initializeApp(firebaseConfig);
         const fbAuth = firebase.auth();
         const db = firebase.firestore();
-        // const storage = firebase.storage(); // Not used currently
 
         // --- DOM Elements ---
         const appContainer = document.getElementById('app-container');
@@ -441,27 +440,28 @@
         const prevQuestionBtn = document.getElementById('prev-question-btn');
         const nextQuestionBtn = document.getElementById('next-question-btn');
         const submitTestBtn = document.getElementById('submit-test-btn');
-        // const testLanguageToggle = document.getElementById('test-language-toggle'); // Removed
         const reviewTitle = document.getElementById('review-title');
         const reviewSummary = document.getElementById('review-summary');
         const reviewContent = document.getElementById('review-content');
         const exitReviewBtn = document.getElementById('exit-review-btn');
         const reviewFilters = document.getElementById('review-filters');
         const saveReviewBtn = document.getElementById('save-review-btn');
-        // const reviewLanguageToggle = document.getElementById('review-language-toggle'); // Removed
         // Media Elements
         const imageUploadButton = document.getElementById('image-upload-button');
         const imageUploadInput = document.getElementById('image-upload-input');
         const audioUploadButton = document.getElementById('audio-upload-button');
         const audioUploadInput = document.getElementById('audio-upload-input');
         const recordAudioButton = document.getElementById('record-audio-button');
+        const pdfUploadButton = document.getElementById('pdf-upload-button'); // PDF Button
+        const pdfUploadInput = document.getElementById('pdf-upload-input');   // PDF Input
         // Media Preview Elements
         const mediaPreviewContainer = document.getElementById('media-preview-container');
-        const imagePreviewsList = document.getElementById('image-previews-list'); // Container for image thumbs
+        const imagePreviewsList = document.getElementById('image-previews-list');
+        const pdfPreviewsList = document.getElementById('pdf-previews-list'); // PDF List container
         const previewAudioContainer = document.getElementById('preview-audio-container');
         const previewAudio = document.getElementById('preview-audio');
         const mediaPreviewInfo = document.getElementById('media-preview-info');
-        const removeMediaButton = document.getElementById('remove-media-button'); // Renamed to remove *all* media
+        const removeMediaButton = document.getElementById('remove-media-button'); // Remove ALL button
         // Recording Status
         const recordingStatus = document.getElementById('recording-status');
         const recordingTimerSpan = recordingStatus.querySelector('span');
@@ -482,12 +482,16 @@
         const DELETE_TEST_ICON = '🗑️';
         const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|v\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:\S+)?/i;
         const imageUrlRegex = /(?<!src=["'])(?<!href=["'])(https?:\/\/[^\s()<>]+?\.(?:jpg|jpeg|png|gif|webp|bmp))/gi;
+        // Size Limits (Approximate for Inline Data)
         const MAX_IMAGE_SIZE_MB = 4;
-        const MAX_TOTAL_IMAGE_SIZE_MB = 16; // Limit for multiple images combined (approx)
-        const MAX_IMAGE_COUNT = 5; // Limit number of images
-        const MAX_AUDIO_SIZE_MB = 10;
+        const MAX_TOTAL_IMAGE_SIZE_MB = 16; // Total limit for multiple images
+        const MAX_IMAGE_COUNT = 5;
+        const MAX_AUDIO_SIZE_MB = 10; // Limit for single audio file
+        const MAX_PDF_SIZE_MB = 10;   // Limit PER PDF for inline data (arbitrary, total matters more)
+        const MAX_TOTAL_PDF_SIZE_MB = 18; // Rough TOTAL limit for PDFs + prompt for inline
+        const MAX_PDF_COUNT = 5;      // Limit number of PDFs
         const SUPPORTED_AUDIO_MIMES = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'];
-        const RECORDING_TIME_LIMIT_SECONDS = 300; // 5 minutes
+        const RECORDING_TIME_LIMIT_SECONDS = 300;
 
         // --- State Variables ---
         let API_KEY = '';
@@ -510,12 +514,9 @@
         let testListListener = null;
         let isDeletingChat = false;
         let allSavedTestsData = [];
-        // Removed language state
-        // let currentTestLanguage = 'en';
-        // let currentReviewLanguage = 'en';
         // Multi-media state
-        let selectedMediaItems = []; // Array to hold objects: { type: 'image'/'audio', file, base64, mimeType, name, id }
-        let nextMediaId = 0; // Simple ID generator for preview items
+        let selectedMediaItems = []; // Array holds { type: 'image'/'audio'/'pdf', file, base64, mimeType, name, id }
+        let nextMediaId = 0; // Simple ID generator
 
         // Audio Recording State
         let mediaRecorder = null;
@@ -543,29 +544,21 @@
         prevQuestionBtn.addEventListener('click', () => handleTestNavigation('prev'));
         nextQuestionBtn.addEventListener('click', () => handleTestNavigation('next'));
         submitTestBtn.addEventListener('click', submitTest);
-        // testLanguageToggle.addEventListener('click', toggleTestLanguage); // Removed
         exitReviewBtn.addEventListener('click', exitReview);
         chatArea.addEventListener('click', handleChatAreaClick);
         reviewFilters.addEventListener('click', handleReviewFilterClick);
         saveReviewBtn.addEventListener('click', saveTestReviewToCloud);
-        // reviewLanguageToggle.addEventListener('click', toggleReviewLanguage); // Removed
         loginBtn.addEventListener('click', signInWithGoogle);
         logoutBtn.addEventListener('click', signOut);
         // Media Listeners
-        imageUploadButton.addEventListener('click', () => {
-            if (!imageUploadButton.disabled) imageUploadInput.click();
-        });
+        imageUploadButton.addEventListener('click', () => { if (!imageUploadButton.disabled) imageUploadInput.click(); });
         imageUploadInput.addEventListener('change', handleImageFileSelect);
-        audioUploadButton.addEventListener('click', () => {
-            if (!audioUploadButton.disabled) audioUploadInput.click();
-        });
+        audioUploadButton.addEventListener('click', () => { if (!audioUploadButton.disabled) audioUploadInput.click(); });
         audioUploadInput.addEventListener('change', handleAudioFileSelect);
-        recordAudioButton.addEventListener('click', () => {
-             if (!recordAudioButton.disabled || isRecording) {
-                toggleRecording();
-             }
-        });
-        removeMediaButton.addEventListener('click', removeAllSelectedMedia); // Renamed listener function
+        recordAudioButton.addEventListener('click', () => { if (!recordAudioButton.disabled || isRecording) toggleRecording(); });
+        pdfUploadButton.addEventListener('click', () => { if (!pdfUploadButton.disabled) pdfUploadInput.click(); }); // PDF Listener
+        pdfUploadInput.addEventListener('change', handlePdfFileSelect); // PDF Listener
+        removeMediaButton.addEventListener('click', removeAllSelectedMedia); // Remove ALL
 
 
         // --- Initialization Functions ---
@@ -574,7 +567,7 @@
             fbAuth.onAuthStateChanged(handleAuthStateChange);
             switchView('chat');
             userInput.focus();
-            console.log("App Initialized (v9.6)");
+            console.log("App Initialized (v9.7)");
         }
 
         function loadGeminiApiKey() {
@@ -599,22 +592,18 @@
              catch (error) { console.error("Sign Out Error:", error); displayError(`Logout failed: ${error.message || 'Unknown error'}`); setLoadingState(false); }
          }
 
-        function handleAuthStateChange(user) {
+        function handleAuthStateChange(user) { // (Updated placeholder/button state)
             console.log("Auth state changed. User:", user ? user.uid : 'None');
-            // Clear listeners and UI state
             if (activeChatListener) { activeChatListener(); activeChatListener = null; console.log("Cleared active chat listener."); }
             if (chatListListener) { chatListListener(); chatListListener = null; console.log("Cleared chat list listener.");}
             if (testListListener) { testListListener(); testListListener = null; console.log("Cleared test list listener."); }
-
-            stopRecording(true); // Force stop recording if user logs out/changes
-
+            stopRecording(true);
             chatArea.innerHTML = '';
             chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Please log in...</div>';
             allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Login to see tests.</div>';
-            allTestsSection.classList.remove('visible');
-            testSearchInput.value = ''; testSearchInput.disabled = true;
+            allTestsSection.classList.remove('visible'); testSearchInput.value = ''; testSearchInput.disabled = true;
             activeChatId = null; currentChatHistory = []; isDeletingChat = false; allSavedTestsData = [];
-            removeAllSelectedMedia(); // Clear media state
+            removeAllSelectedMedia();
 
             if (user) {
                 currentUser = user; console.log("User logged in:", currentUser.uid);
@@ -622,73 +611,33 @@
                 accountEmail.textContent = currentUser.email || currentUser.displayName || `User`;
                 accountAvatar.textContent = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
                 accountPlan.textContent = "Firebase User";
-
-                // Enable controls that don't depend on active chat yet
-                startChatButton.disabled = false;
-                decreaseTextBtn.disabled = false;
-                increaseTextBtn.disabled = false;
-                themeToggleButton.disabled = false;
-                testSearchInput.disabled = false;
-                userInput.disabled = false; // Enable text input
-
-                // Initially disable buttons that require an active chat
-                imageUploadButton.disabled = true;
-                audioUploadButton.disabled = true;
-                recordAudioButton.disabled = true;
-                sendButton.disabled = true;
-                mcqModeCheckbox.disabled = true;
-
-                userInput.placeholder = "Select or create a chat"; // English only
-                inputContainer.style.display = 'block';
-                suggestionsContainer.style.display = 'flex';
-                allTestsSection.classList.add('visible');
-
-                loadUserSettings(currentUser.uid);
-                loadAndListenForChats(currentUser.uid); // Will enable chat buttons if chat selected
-                loadAndListenForTests(currentUser.uid);
+                startChatButton.disabled = false; decreaseTextBtn.disabled = false; increaseTextBtn.disabled = false; themeToggleButton.disabled = false; testSearchInput.disabled = false; userInput.disabled = false;
+                imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; sendButton.disabled = true; mcqModeCheckbox.disabled = true; // Disabled until chat active
+                userInput.placeholder = "Select or create a chat";
+                inputContainer.style.display = 'block'; suggestionsContainer.style.display = 'flex'; allTestsSection.classList.add('visible');
+                loadUserSettings(currentUser.uid); loadAndListenForChats(currentUser.uid); loadAndListenForTests(currentUser.uid);
                 setLoadingState(false);
             } else {
                 currentUser = null; console.log("User logged out");
                 loginBtn.style.display = 'inline-block'; logoutBtn.style.display = 'none';
                 accountEmail.textContent = "Not logged in"; accountAvatar.textContent = '?'; accountPlan.textContent = "";
-
-                // Disable all controls
                 startChatButton.disabled = true; decreaseTextBtn.disabled = true; increaseTextBtn.disabled = true; themeToggleButton.disabled = true; testSearchInput.disabled = true; userInput.disabled = true;
-                imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
-                sendButton.disabled = true; mcqModeCheckbox.disabled = true;
-
-                userInput.placeholder = "Please log in"; // English only
-                inputContainer.style.display = 'none'; suggestionsContainer.style.display = 'none';
-                allTestsSection.classList.remove('visible');
-
-                renderGreetingOrLoginPrompt();
-                currentTheme = 'light'; applyTheme();
-                currentTextSizeMultiplier = 1.0; applyTextSize();
+                imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; sendButton.disabled = true; mcqModeCheckbox.disabled = true;
+                userInput.placeholder = "Please log in";
+                inputContainer.style.display = 'none'; suggestionsContainer.style.display = 'none'; allTestsSection.classList.remove('visible');
+                renderGreetingOrLoginPrompt(); currentTheme = 'light'; applyTheme(); currentTextSizeMultiplier = 1.0; applyTextSize();
                 setLoadingState(false);
             }
         }
 
-        function renderGreetingOrLoginPrompt() {
-             chatArea.innerHTML = '';
-             const greetingElement = document.createElement('div');
-             greetingElement.classList.add('greeting');
-             if (currentUser) {
-                 greetingElement.innerHTML = `<span class="asterisk">*</span>Good day, ${currentUser.displayName || 'User'}!`;
-                 chatArea.appendChild(greetingElement);
-                 if (!activeChatId) {
-                     displayMessage("Select a chat or start a new one.", 'ai'); // English only
-                 }
-             }
-             else {
-                 greetingElement.innerHTML = `<span class="asterisk">*</span>Welcome!`;
-                 chatArea.appendChild(greetingElement);
-                 displayMessage("Please log in to start chatting.", 'ai'); // English only
-             }
+        function renderGreetingOrLoginPrompt() { // (English only)
+             chatArea.innerHTML = ''; const greetingElement = document.createElement('div'); greetingElement.classList.add('greeting');
+             if (currentUser) { greetingElement.innerHTML = `<span class="asterisk">*</span>Good day, ${currentUser.displayName || 'User'}!`; chatArea.appendChild(greetingElement); if (!activeChatId) displayMessage("Select a chat or start a new one.", 'ai'); }
+             else { greetingElement.innerHTML = `<span class="asterisk">*</span>Welcome!`; chatArea.appendChild(greetingElement); displayMessage("Please log in to start chatting.", 'ai'); }
              scrollToBottom(true);
          }
 
-        // --- Settings (Theme/Text Size) ---
-        // (No changes needed)
+        // --- Settings (Theme/Text Size) --- (No changes)
         async function loadUserSettings(userId) { const userDocRef = db.collection('users').doc(userId); try { const docSnap = await userDocRef.get(); if (docSnap.exists) { const settings = docSnap.data(); currentTheme = settings.theme || 'light'; currentTextSizeMultiplier = settings.textSizeMultiplier || 1.0; console.log("Loaded user settings:", settings); } else { console.log("No user settings found, using defaults."); currentTheme = 'light'; currentTextSizeMultiplier = 1.0; await saveUserSettings(); } } catch (error) { console.error("Error loading user settings:", error); currentTheme = 'light'; currentTextSizeMultiplier = 1.0; } applyTheme(); applyTextSize(); }
         async function saveUserSettings() { if (!currentUser) return; const userDocRef = db.collection('users').doc(currentUser.uid); const settings = { theme: currentTheme, textSizeMultiplier: currentTextSizeMultiplier }; try { await userDocRef.set(settings, { merge: true }); console.log("User settings saved:", settings); } catch (error) { console.error("Error saving user settings:", error); } }
         function applyTheme() { if(currentTheme==='dark'){ document.body.classList.add('dark-theme'); themeToggleButton.textContent=LIGHT_THEME_ICON; themeToggleButton.title="Switch to Light Theme"; } else { document.body.classList.remove('dark-theme'); themeToggleButton.textContent=DARK_THEME_ICON; themeToggleButton.title="Switch to Dark Theme"; } }
@@ -697,8 +646,7 @@
         function adjustTextSize(change) { if (!currentUser) return; let newMultiplier = Math.max(MIN_TEXT_SIZE_MULTIPLIER, Math.min(MAX_TEXT_SIZE_MULTIPLIER, currentTextSizeMultiplier + change)); newMultiplier = Math.round(newMultiplier * 10) / 10; if (newMultiplier !== currentTextSizeMultiplier) { currentTextSizeMultiplier = newMultiplier; applyTextSize(); saveUserSettings(); } }
 
 
-        // --- Chat Storage & Loading (Firestore) ---
-        // (Minor changes to placeholders and logging)
+        // --- Chat Storage & Loading (Firestore) --- (Updated placeholders/button state)
          function loadAndListenForChats(userId) {
             if (chatListListener) { chatListListener(); chatListListener = null; }
             const chatsRef = db.collection('chats').where('userId', '==', userId).orderBy('lastUpdated', 'desc');
@@ -709,36 +657,23 @@
                 console.log("Received chat list snapshot:", chats.length, "chats");
                 renderSidebarChatList(chats);
                 let chatToLoad = null;
-                if (activeChatId && chats.some(c => c.id === activeChatId)) {
-                    chatToLoad = activeChatId;
-                } else if (chats.length > 0) {
-                    chatToLoad = chats[0].id;
-                    console.log("Active chat gone or none selected, switching to newest:", chatToLoad);
-                } else {
-                    activeChatId = null;
-                    if (activeChatListener) { activeChatListener(); activeChatListener = null; }
-                    renderGreetingOrLoginPrompt();
-                    setLoadingState(false);
-                    imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
-                    sendButton.disabled = true; mcqModeCheckbox.disabled = true;
-                    userInput.placeholder = "Create a new chat"; // English only
+                if (activeChatId && chats.some(c => c.id === activeChatId)) chatToLoad = activeChatId;
+                else if (chats.length > 0) { chatToLoad = chats[0].id; console.log("Active chat gone/none, switching to newest:", chatToLoad); }
+                else { // No chats exist
+                    activeChatId = null; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); setLoadingState(false);
+                    imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; sendButton.disabled = true; mcqModeCheckbox.disabled = true;
+                    userInput.placeholder = "Create a new chat";
                 }
-
-                 if (chatToLoad && chatToLoad !== activeChatId) {
-                     switchChat(chatToLoad);
-                 } else if (activeChatId) {
-                     highlightActiveChatInSidebar();
-                     setLoadingState(false);
-                     const enable = !API_KEY;
-                     imageUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable;
-                     sendButton.disabled = enable; mcqModeCheckbox.disabled = enable;
-                     userInput.placeholder = "Enter prompt, attach media, or paste URL"; // English only
-                 } else {
-                     setLoadingState(false);
-                 }
+                if (chatToLoad && chatToLoad !== activeChatId) switchChat(chatToLoad);
+                else if (activeChatId) { // Chat is already active/loaded
+                    highlightActiveChatInSidebar(); setLoadingState(false);
+                    const enable = !API_KEY;
+                    imageUploadButton.disabled = enable; pdfUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable; sendButton.disabled = enable; mcqModeCheckbox.disabled = enable;
+                    userInput.placeholder = "Enter prompt, attach media, or paste URL";
+                } else setLoadingState(false); // No chats and none loading
             }, error => { console.error("Error listening for chats:", error); displayError("Could not load chat list."); chatListContainer.innerHTML = '<div style="padding:10px;color:var(--error-text);">Error loading chats.</div>'; setLoadingState(false); });
         }
-        function renderSidebarChatList(chats) {
+        function renderSidebarChatList(chats) { // (No changes)
             chatListContainer.innerHTML = ''; if (!currentUser) { chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Please log in.</div>'; return; }
             if (chats.length === 0) { chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No chats yet. Start one!</div>'; }
             else { chats.forEach(chatData => { const itemElement = document.createElement('div'); itemElement.classList.add('chat-list-item'); let title = chatData.title; if (typeof title !== 'string' || !title.trim()) { title = '(Untitled Chat)'; } title = title.trim(); itemElement.textContent = title; itemElement.dataset.id = chatData.id; itemElement.title = title; const deleteBtn = document.createElement('button'); deleteBtn.classList.add('delete-chat-button'); deleteBtn.innerHTML = DELETE_ICON; deleteBtn.title = "Delete chat"; deleteBtn.dataset.id = chatData.id; itemElement.appendChild(deleteBtn); chatListContainer.appendChild(itemElement); }); }
@@ -747,1012 +682,337 @@
         function highlightActiveChatInSidebar() { const items = chatListContainer.querySelectorAll('.chat-list-item'); items.forEach(item => { item.classList.toggle('active', item.dataset.id === activeChatId); }); }
 
 
-        // --- Media Handling Functions (Multi-Image Support) ---
+        // --- Media Handling Functions (Added PDF, Exclusivity, Multi-Image) ---
 
-        /**
-         * Handles selection of one or more image files.
-         */
+        /** Checks if the currently selected media type conflicts with the new type */
+        function checkMediaExclusivity(newType) {
+             if (selectedMediaItems.length === 0) return true; // No conflict if nothing selected
+             const currentType = selectedMediaItems[0].type; // Check type of the first item
+
+             if (newType === 'image' && currentType !== 'image') {
+                 alert("Cannot select images when audio or PDFs are already selected. Please remove the other media first.");
+                 return false;
+             }
+             if (newType === 'audio' && currentType !== 'audio') {
+                  alert("Cannot select audio when images or PDFs are already selected. Please remove the other media first.");
+                 return false;
+             }
+              if (newType === 'pdf' && currentType !== 'pdf') {
+                  alert("Cannot select PDFs when images or audio are already selected. Please remove the other media first.");
+                 return false;
+             }
+             return true; // No conflict or same type
+        }
+
+        /** Handle Image Selection (Multiple) */
         function handleImageFileSelect(event) {
             console.log("handleImageFileSelect triggered");
-
-            // Check if audio is already selected
-            if (selectedMediaItems.length > 0 && selectedMediaItems[0].type === 'audio') {
-                alert("Cannot select images when audio is already selected. Please remove the audio first.");
-                imageUploadInput.value = ''; // Reset input
-                return;
-            }
+            if (!checkMediaExclusivity('image')) { imageUploadInput.value = ''; return; }
 
             const files = event.target.files;
-            if (!files || files.length === 0) {
-                console.log("No image files selected or selection cancelled.");
-                imageUploadInput.value = ''; // Reset input
-                // Don't remove existing images if selection was cancelled
-                return;
-            }
+            if (!files || files.length === 0) { console.log("No image files selected."); imageUploadInput.value = ''; return; }
 
             let currentImageCount = selectedMediaItems.filter(item => item.type === 'image').length;
-            let addedCount = 0;
             let totalSizeMB = selectedMediaItems.reduce((sum, item) => sum + (item.file?.size || 0), 0) / 1024 / 1024;
             const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/bmp'];
-
             const readPromises = [];
 
             for (const file of files) {
-                if (currentImageCount >= MAX_IMAGE_COUNT) {
-                    alert(`You can select a maximum of ${MAX_IMAGE_COUNT} images.`);
-                    break; // Stop processing more files
-                }
-
-                if (!allowedTypes.includes(file.type)) {
-                    console.warn(`Skipping invalid file type: ${file.name} (${file.type})`);
-                    continue; // Skip this file
-                }
-
+                if (currentImageCount >= MAX_IMAGE_COUNT) { alert(`You can select a maximum of ${MAX_IMAGE_COUNT} images.`); break; }
+                if (!allowedTypes.includes(file.type)) { console.warn(`Skipping invalid file type: ${file.name} (${file.type})`); continue; }
                 const fileSizeMB = file.size / 1024 / 1024;
-                if (fileSizeMB > MAX_IMAGE_SIZE_MB) {
-                    alert(`Image "${file.name}" (${fileSizeMB.toFixed(1)}MB) is too large. Max ${MAX_IMAGE_SIZE_MB}MB per image.`);
-                    continue; // Skip this file
-                }
+                if (fileSizeMB > MAX_IMAGE_SIZE_MB) { alert(`Image "${file.name}" (${fileSizeMB.toFixed(1)}MB) exceeds max size ${MAX_IMAGE_SIZE_MB}MB.`); continue; }
+                if (totalSizeMB + fileSizeMB > MAX_TOTAL_IMAGE_SIZE_MB) { alert(`Adding "${file.name}" would exceed total size limit ${MAX_TOTAL_IMAGE_SIZE_MB}MB.`); continue; }
 
-                if (totalSizeMB + fileSizeMB > MAX_TOTAL_IMAGE_SIZE_MB) {
-                     alert(`Adding "${file.name}" would exceed the total image size limit of ${MAX_TOTAL_IMAGE_SIZE_MB}MB.`);
-                     continue; // Skip this file
-                }
-
-                // Create a promise to read the file
                 const readPromise = new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = (e) => {
-                        const mediaId = nextMediaId++;
-                        const newItem = {
-                            id: mediaId, // Assign unique ID for removal
-                            type: 'image',
-                            file: file,
-                            base64: e.target.result,
-                            mimeType: file.type,
-                            name: file.name
-                        };
-                        resolve(newItem); // Resolve with the media item data
-                    };
-                    reader.onerror = (error) => {
-                        console.error("Error reading image file:", file.name, error);
-                        reject(`Error reading file ${file.name}`); // Reject the promise on error
-                    };
+                    reader.onload = (e) => resolve({ id: nextMediaId++, type: 'image', file: file, base64: e.target.result, mimeType: file.type, name: file.name });
+                    reader.onerror = (error) => { console.error(`Error reading ${file.name}:`, error); reject(`Error reading ${file.name}`); };
                     reader.readAsDataURL(file);
                 });
-
                 readPromises.push(readPromise);
-                currentImageCount++;
-                totalSizeMB += fileSizeMB;
-                addedCount++;
+                currentImageCount++; totalSizeMB += fileSizeMB;
             }
 
-            // Process all read files after they complete
-            Promise.all(readPromises)
-                .then(newItems => {
-                    selectedMediaItems.push(...newItems); // Add all successfully read items
-                    console.log(`Added ${newItems.length} images. Total images: ${selectedMediaItems.length}`);
-                    displayMediaPreview(); // Update the preview area
-                })
-                .catch(error => {
-                    console.error("Error processing selected images:", error);
-                    alert(`Error processing some images: ${error}`);
-                    // Still display previews for successfully read images
-                    displayMediaPreview();
-                })
-                .finally(() => {
-                     imageUploadInput.value = ''; // Reset input regardless of outcome
-                });
-
+            Promise.all(readPromises).then(newItems => {
+                selectedMediaItems.push(...newItems); console.log(`Added ${newItems.length} images. Total: ${selectedMediaItems.length}`); displayMediaPreview();
+            }).catch(error => { console.error("Error processing images:", error); alert(`Error processing some images: ${error}`); displayMediaPreview(); })
+            .finally(() => { imageUploadInput.value = ''; });
         }
 
+         /** Handle PDF Selection (Multiple) */
+        function handlePdfFileSelect(event) {
+            console.log("handlePdfFileSelect triggered");
+            if (!checkMediaExclusivity('pdf')) { pdfUploadInput.value = ''; return; }
 
-        /**
-         * Handles selection of a single audio file. Ensures exclusivity.
-         */
+            const files = event.target.files;
+            if (!files || files.length === 0) { console.log("No PDF files selected."); pdfUploadInput.value = ''; return; }
+
+            let currentPdfCount = selectedMediaItems.filter(item => item.type === 'pdf').length;
+            let totalSizeMB = selectedMediaItems.reduce((sum, item) => sum + (item.file?.size || 0), 0) / 1024 / 1024;
+            const readPromises = [];
+
+            for (const file of files) {
+                if (currentPdfCount >= MAX_PDF_COUNT) { alert(`You can select a maximum of ${MAX_PDF_COUNT} PDFs.`); break; }
+                if (file.type !== 'application/pdf') { console.warn(`Skipping invalid file type: ${file.name} (${file.type})`); continue; }
+                const fileSizeMB = file.size / 1024 / 1024;
+                // Warn about individual size, but primarily check total size for inline
+                if (fileSizeMB > MAX_PDF_SIZE_MB) { console.warn(`PDF "${file.name}" (${fileSizeMB.toFixed(1)}MB) is large, ensure total stays under limit.`); }
+                if (totalSizeMB + fileSizeMB > MAX_TOTAL_PDF_SIZE_MB) { alert(`Adding "${file.name}" would exceed the approximate total size limit of ${MAX_TOTAL_PDF_SIZE_MB}MB for inline data. Consider using fewer/smaller PDFs.`); continue; }
+
+                const readPromise = new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve({ id: nextMediaId++, type: 'pdf', file: file, base64: e.target.result, mimeType: file.type, name: file.name });
+                    reader.onerror = (error) => { console.error(`Error reading ${file.name}:`, error); reject(`Error reading ${file.name}`); };
+                    reader.readAsDataURL(file);
+                });
+                readPromises.push(readPromise);
+                currentPdfCount++; totalSizeMB += fileSizeMB;
+            }
+
+            Promise.all(readPromises).then(newItems => {
+                selectedMediaItems.push(...newItems); console.log(`Added ${newItems.length} PDFs. Total: ${selectedMediaItems.length}`); displayMediaPreview();
+            }).catch(error => { console.error("Error processing PDFs:", error); alert(`Error processing some PDFs: ${error}`); displayMediaPreview(); })
+            .finally(() => { pdfUploadInput.value = ''; });
+        }
+
+        /** Handle Audio Selection (Single) */
         function handleAudioFileSelect(event) {
             console.log("handleAudioFileSelect triggered");
-
-             // Check if images are already selected
-            if (selectedMediaItems.length > 0 && selectedMediaItems.some(item => item.type === 'image')) {
-                alert("Cannot select audio when image(s) are already selected. Please remove the images first.");
-                audioUploadInput.value = ''; // Reset input
-                return;
-            }
-
-            removeAllSelectedMedia(); // Clear any previous media (should be none or audio)
+            if (!checkMediaExclusivity('audio')) { audioUploadInput.value = ''; return; }
+            removeAllSelectedMedia(); // Audio is always exclusive
 
             const file = event.target.files[0];
-            if (!file) {
-                console.log("No audio file selected.");
-                audioUploadInput.value = ''; // Reset input
-                return;
-            }
-
-            if (!SUPPORTED_AUDIO_MIMES.includes(file.type)) {
-                alert(`Unsupported audio file type: ${file.type}. Please select WAV, MP3, AIFF, AAC, OGG, or FLAC.`);
-                audioUploadInput.value = ''; // Reset input
-                return;
-            }
-
+            if (!file) { console.log("No audio file selected."); audioUploadInput.value = ''; return; }
+            if (!SUPPORTED_AUDIO_MIMES.includes(file.type)) { alert(`Unsupported audio file type: ${file.type}.`); audioUploadInput.value = ''; return; }
             const fileSizeMB = file.size / 1024 / 1024;
-            if (fileSizeMB > MAX_AUDIO_SIZE_MB) {
-                alert(`Audio file too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB for upload.`);
-                audioUploadInput.value = ''; // Reset input
-                return;
-            }
+            if (fileSizeMB > MAX_AUDIO_SIZE_MB) { alert(`Audio file too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.`); audioUploadInput.value = ''; return; }
 
             const reader = new FileReader();
             reader.onload = (e) => {
-                 const mediaId = nextMediaId++;
-                selectedMediaItems = [{ // Replace array with single audio item
-                    id: mediaId,
-                    type: 'audio',
-                    file: file,
-                    base64: e.target.result,
-                    mimeType: file.type,
-                    name: file.name
-                }];
-                console.log("Audio selected and read:", file.name, file.type, `(${fileSizeMB.toFixed(2)} MB)`);
-                displayMediaPreview();
+                selectedMediaItems = [{ id: nextMediaId++, type: 'audio', file: file, base64: e.target.result, mimeType: file.type, name: file.name }];
+                console.log("Audio selected:", file.name); displayMediaPreview();
             }
-            reader.onerror = (error) => {
-                console.error("Error reading audio file:", error);
-                alert("Error reading audio file.");
-                removeAllSelectedMedia();
-            };
-            audioUploadInput.value = ''; // Reset input after starting read
-            reader.readAsDataURL(file);
+            reader.onerror = (error) => { console.error("Error reading audio:", error); alert("Error reading audio file."); removeAllSelectedMedia(); };
+            audioUploadInput.value = ''; reader.readAsDataURL(file);
         }
 
-        /**
-         * Displays previews for all selected media items.
-         */
-        function displayMediaPreview() {
-            console.log("displayMediaPreview called. Items:", selectedMediaItems.length);
-            // Clear existing previews
-            imagePreviewsList.innerHTML = '';
-            previewAudioContainer.style.display = 'none';
-            previewAudio.removeAttribute('src');
 
-            if (selectedMediaItems.length === 0) {
-                mediaPreviewContainer.style.display = 'none';
-                mediaPreviewInfo.textContent = '';
-                return;
-            }
+        /** Displays previews for all selected media items */
+        function displayMediaPreview() {
+            console.log("Updating media preview. Items:", selectedMediaItems.length);
+            imagePreviewsList.innerHTML = ''; imagePreviewsList.style.display = 'none';
+            pdfPreviewsList.innerHTML = ''; pdfPreviewsList.style.display = 'none';
+            previewAudioContainer.style.display = 'none'; previewAudio.removeAttribute('src');
+
+            if (selectedMediaItems.length === 0) { mediaPreviewContainer.style.display = 'none'; mediaPreviewInfo.textContent = ''; return; }
 
             const audioItem = selectedMediaItems.find(item => item.type === 'audio');
             const imageItems = selectedMediaItems.filter(item => item.type === 'image');
+            const pdfItems = selectedMediaItems.filter(item => item.type === 'pdf');
 
-            if (audioItem) {
-                // Display single audio item
-                imagePreviewsList.style.display = 'none'; // Hide image list container
-                try {
-                    previewAudio.src = audioItem.base64;
-                    previewAudio.load();
-                    previewAudioContainer.style.display = 'flex';
-                    mediaPreviewInfo.textContent = audioItem.name || 'Audio preview';
-                     console.log("Showing audio preview for:", audioItem.name);
-                } catch (e) {
-                     console.error("Error setting audio src:", e);
-                     previewAudioContainer.style.display = 'none';
-                     mediaPreviewInfo.textContent = 'Error loading audio preview';
-                }
-            } else if (imageItems.length > 0) {
-                // Display multiple image thumbnails
-                previewAudioContainer.style.display = 'none'; // Hide audio player
-                imagePreviewsList.style.display = 'flex'; // Show image list container
+            if (audioItem) { // Display single audio
+                try { previewAudio.src = audioItem.base64; previewAudio.load(); previewAudioContainer.style.display = 'flex'; mediaPreviewInfo.textContent = audioItem.name || 'Audio preview'; console.log("Showing audio preview."); }
+                catch (e) { console.error("Error setting audio src:", e); mediaPreviewInfo.textContent = 'Error loading audio preview'; }
+            } else if (imageItems.length > 0) { // Display image thumbnails
+                imagePreviewsList.style.display = 'flex';
                 imageItems.forEach(item => {
-                    try {
-                        const itemContainer = document.createElement('div');
-                        itemContainer.classList.add('image-preview-item');
-                        itemContainer.dataset.mediaId = item.id;
-
-                        const img = document.createElement('img');
-                        img.src = item.base64;
-                        img.alt = item.name || 'Image preview';
-                        img.title = item.name || 'Image preview';
-                        img.onerror = () => { img.alt = "Preview load error"; }; // Handle thumb load error
-
-                        const removeBtn = document.createElement('button');
-                        removeBtn.classList.add('remove-image-item-button');
-                        removeBtn.innerHTML = '&times;';
-                        removeBtn.title = `Remove ${item.name || 'image'}`;
-                        removeBtn.onclick = () => removeSelectedMediaItem(item.id);
-
-                        itemContainer.appendChild(img);
-                        itemContainer.appendChild(removeBtn);
-                        imagePreviewsList.appendChild(itemContainer);
-                    } catch (e) {
-                         console.error("Error creating image preview element:", e);
-                    }
+                     try { const itemContainer = document.createElement('div'); itemContainer.classList.add('image-preview-item'); itemContainer.dataset.mediaId = item.id; const img = document.createElement('img'); img.src = item.base64; img.alt = item.name; img.title = item.name; img.onerror = () => { img.alt = "Preview load error"; }; const removeBtn = document.createElement('button'); removeBtn.classList.add('remove-media-item-button'); removeBtn.innerHTML = '&times;'; removeBtn.title = `Remove ${item.name}`; removeBtn.onclick = (e) => { e.stopPropagation(); removeSelectedMediaItem(item.id); }; itemContainer.appendChild(img); itemContainer.appendChild(removeBtn); imagePreviewsList.appendChild(itemContainer); } catch (e) { console.error("Error creating image preview item:", e); }
                 });
-                mediaPreviewInfo.textContent = `${imageItems.length} image(s) selected`;
-                 console.log("Showing", imageItems.length, "image previews.");
-            } else {
-                 // Should not happen if selectedMediaItems is not empty, but handle defensively
-                 mediaPreviewContainer.style.display = 'none';
-                 mediaPreviewInfo.textContent = '';
-                 console.warn("displayMediaPreview called with empty or invalid items array.");
-                 return; // Explicitly return here
-            }
+                mediaPreviewInfo.textContent = `${imageItems.length} image(s) selected`; console.log("Showing image previews.");
+            } else if (pdfItems.length > 0) { // Display PDF list
+                pdfPreviewsList.style.display = 'flex'; // Use flex column
+                pdfItems.forEach(item => {
+                     try { const itemContainer = document.createElement('div'); itemContainer.classList.add('pdf-preview-item'); itemContainer.dataset.mediaId = item.id; const nameSpan = document.createElement('span'); nameSpan.textContent = item.name; nameSpan.title = item.name; const removeBtn = document.createElement('button'); removeBtn.classList.add('remove-media-item-button'); removeBtn.innerHTML = '&times;'; removeBtn.title = `Remove ${item.name}`; removeBtn.onclick = (e) => { e.stopPropagation(); removeSelectedMediaItem(item.id); }; itemContainer.appendChild(nameSpan); itemContainer.appendChild(removeBtn); pdfPreviewsList.appendChild(itemContainer); } catch (e) { console.error("Error creating PDF preview item:", e); }
+                });
+                mediaPreviewInfo.textContent = `${pdfItems.length} PDF(s) selected`; console.log("Showing PDF previews.");
+            } else { mediaPreviewContainer.style.display = 'none'; mediaPreviewInfo.textContent = ''; return; }
 
-            mediaPreviewContainer.style.display = 'flex'; // Show the main preview container
+            mediaPreviewContainer.style.display = 'flex'; // Show the main container
         }
 
-
-        /**
-         * Removes a specific media item by its ID.
-         * @param {number} mediaId - The ID of the media item to remove.
-         */
+        /** Removes a specific media item by its ID */
         function removeSelectedMediaItem(mediaId) {
              console.log(`Removing media item with ID: ${mediaId}`);
+             const initialLength = selectedMediaItems.length;
              selectedMediaItems = selectedMediaItems.filter(item => item.id !== mediaId);
-             displayMediaPreview(); // Update the preview area
+             if (selectedMediaItems.length < initialLength) {
+                 console.log("Item removed.");
+                 displayMediaPreview(); // Update the preview area
+             } else {
+                  console.warn(`Media item with ID ${mediaId} not found.`);
+             }
         }
 
-        /**
-         * Removes ALL currently selected media items and stops recording.
-         */
+        /** Removes ALL currently selected media items */
         function removeAllSelectedMedia() {
             console.log("removeAllSelectedMedia called.");
-            stopRecording(true); // Force stop recording if active
-
-            selectedMediaItems = []; // Clear the array
-            nextMediaId = 0; // Reset ID generator (optional)
-
-            // Clear UI previews
-            imagePreviewsList.innerHTML = '';
-            previewAudio.removeAttribute('src');
-            previewAudioContainer.style.display = 'none';
-            mediaPreviewContainer.style.display = 'none';
-            mediaPreviewInfo.textContent = '';
-
-            // Reset file inputs
-            imageUploadInput.value = '';
-            audioUploadInput.value = '';
-
+            stopRecording(true);
+            selectedMediaItems = []; nextMediaId = 0;
+            imagePreviewsList.innerHTML = ''; imagePreviewsList.style.display = 'none';
+            pdfPreviewsList.innerHTML = ''; pdfPreviewsList.style.display = 'none';
+            previewAudio.removeAttribute('src'); previewAudioContainer.style.display = 'none';
+            mediaPreviewContainer.style.display = 'none'; mediaPreviewInfo.textContent = '';
+            imageUploadInput.value = ''; audioUploadInput.value = ''; pdfUploadInput.value = '';
             console.log("All selected media removed.");
         }
 
-        // --- Audio Recording Functions ---
-
-        /**
-         * Toggles audio recording on or off.
-         */
-        async function toggleRecording() {
-            console.log("toggleRecording called. isRecording:", isRecording);
-            if (isRecording) {
-                stopRecording();
-            } else {
-                // Prevent starting recording if images are selected
-                if (selectedMediaItems.some(item => item.type === 'image')) {
-                    alert("Cannot record audio when images are selected. Please remove the images first.");
-                    return;
-                }
-                // Check if app is busy before starting
-                if (sendButton.disabled && !isRecording) {
-                     const isDisabledByLoading = !currentUser || !API_KEY || !activeChatId;
-                     if (isDisabledByLoading) {
-                         console.warn("Cannot start recording: App state prevents it (login/key/chat).");
-                         return;
-                     }
-                     if (userInput.placeholder.includes("Generating") || userInput.placeholder.includes("Sending")) {
-                          console.warn("Cannot start recording: App is currently busy.");
-                          alert("Please wait for the current action to complete before recording.");
-                          return;
-                     }
-                }
-                await startRecording();
-            }
-        }
-
-        /**
-         * Starts audio recording. Ensures exclusivity with other media.
-         */
-        async function startRecording() {
-            console.log("Attempting to start recording...");
-            // Ensure no other media is selected BEFORE asking for permission
-            if (selectedMediaItems.length > 0) {
-                 alert("Cannot record audio when other media is selected. Please remove it first.");
-                 return;
-            }
-
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert("Audio recording is not supported by your browser.");
-                console.error("getUserMedia not supported.");
-                return;
-            }
-
-            try {
-                console.log("Requesting microphone access...");
-                // Remove previous stream first if it somehow exists
-                 if (recorderStream) {
-                    recorderStream.getTracks().forEach(track => track.stop());
-                    recorderStream = null;
-                    console.warn("Stopped lingering recorder stream before starting new one.");
-                 }
-
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                recorderStream = stream;
-                console.log("Microphone access granted.");
-                recordAudioButton.disabled = true; // Disable while initializing
-
-                let options = {};
-                const preferredMimeTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/aac', 'audio/mp4']; // Prioritize good compression/compatibility
-                for (const mimeType of preferredMimeTypes) {
-                    if (MediaRecorder.isTypeSupported(mimeType)) {
-                        options.mimeType = mimeType;
-                        break;
-                    }
-                }
-                 if (!options.mimeType) console.warn("No preferred MIME type supported, using browser default.");
-
-                mediaRecorder = new MediaRecorder(stream, options);
-                const actualMimeType = mediaRecorder.mimeType;
-                console.log("Initializing MediaRecorder. Options:", options, "Actual MIME type:", actualMimeType);
-
-                // Check if the actual mimeType is one Gemini supports *before* recording if possible
-                 // Let's rely on Gemini handling common recording types like ogg/webm/aac for now.
-                 // Add check later if needed: if (!SUPPORTED_AUDIO_MIMES.includes(actualMimeType.split(';')[0])) { ... }
-
-                audioChunks = [];
-
-                mediaRecorder.ondataavailable = (event) => {
-                    if (event.data.size > 0) { audioChunks.push(event.data); }
-                };
-
-                mediaRecorder.onstop = () => {
-                    console.log("MediaRecorder stopped. Chunks collected:", audioChunks.length);
-                    if (recorderStream) { // Stop tracks after recorder stops fully
-                        recorderStream.getTracks().forEach(track => track.stop());
-                        console.log("Microphone stream tracks stopped.");
-                        recorderStream = null;
-                    }
-
-                    isRecording = false;
-                    recordAudioButton.classList.remove('recording');
-                    recordAudioButton.textContent = '🎙️'; recordAudioButton.title = 'Record audio';
-                    recordingStatus.classList.remove('visible');
-                    if (recordingTimerInterval) { clearInterval(recordingTimerInterval); recordingTimerInterval = null; }
-
-                    if (audioChunks.length === 0) {
-                        console.warn("No audio data recorded.");
-                        setLoadingState(false); return;
-                    }
-
-                    const audioBlob = new Blob(audioChunks, { type: actualMimeType });
-                    audioChunks = [];
-                    const fileSizeMB = audioBlob.size / 1024 / 1024;
-                    console.log(`Recording processing complete. Blob size: ${fileSizeMB.toFixed(3)} MB, Type: ${actualMimeType}`);
-
-                    if (audioBlob.size === 0) {
-                        console.warn("Created Blob has size 0."); alert("Recording failed: No audio data captured.");
-                        setLoadingState(false); return;
-                    }
-                    if (fileSizeMB > MAX_AUDIO_SIZE_MB) {
-                        alert(`Recorded audio too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.`);
-                        setLoadingState(false); return;
-                    }
-
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                         if (reader.result && typeof reader.result === 'string' && reader.result.startsWith('data:')) {
-                            console.log("Blob successfully converted to base64 Data URL.");
-                            let finalMimeType = actualMimeType.split(';')[0]; // Remove codecs if present
-                            const mediaId = nextMediaId++;
-                            selectedMediaItems = [{ // Set as the only selected item
-                                id: mediaId,
-                                type: 'audio',
-                                file: null,
-                                base64: reader.result,
-                                mimeType: finalMimeType,
-                                name: `recording-${new Date().toISOString().substring(0, 19).replace(/[:T]/g, '-')}.${finalMimeType.split('/')[1] || 'audio'}`
-                            }];
-                            displayMediaPreview();
-                         } else {
-                             console.error("FileReader finished but result is invalid or empty.");
-                             alert("Error processing recorded audio (Invalid data URL).");
-                         }
-                         setLoadingState(false); // Enable UI after processing
-                    };
-                    reader.onerror = (error) => {
-                         console.error("Error converting recorded audio blob to base64:", error);
-                         alert("Error processing recorded audio.");
-                         setLoadingState(false);
-                    };
-                    console.log("Reading Blob as Data URL...");
-                    reader.readAsDataURL(audioBlob);
-                };
-
-                mediaRecorder.onerror = (event) => {
-                    console.error("MediaRecorder error:", event.error || event);
-                    alert(`Recording error: ${event.error?.name || 'Unknown recorder error'}`);
-                    stopRecording(true);
-                };
-
-                mediaRecorder.start();
-                isRecording = true;
-                recordingStartTime = Date.now();
-                recordAudioButton.classList.add('recording');
-                recordAudioButton.textContent = '🛑'; recordAudioButton.title = 'Stop recording';
-                recordingStatus.classList.add('visible');
-                recordingTimerSpan.textContent = '0s';
-                setLoadingState(true, "Recording..."); // Disables other inputs
-
-                recordingTimerInterval = setInterval(() => {
-                    const elapsedSeconds = Math.floor((Date.now() - recordingStartTime) / 1000);
-                    recordingTimerSpan.textContent = `${elapsedSeconds}s`;
-                    if (elapsedSeconds >= RECORDING_TIME_LIMIT_SECONDS) {
-                        console.log("Recording time limit reached.");
-                        stopRecording(); alert(`Recording stopped automatically after ${RECORDING_TIME_LIMIT_SECONDS} seconds.`);
-                    }
-                }, 1000);
-
-                console.log("Recording started...");
-                recordAudioButton.disabled = false; // Ensure stop button is clickable
-
-            } catch (error) {
-                console.error("Error getting user media or starting recording:", error);
-                if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-                    alert("Microphone access denied. Please allow microphone access in your browser settings and refresh.");
-                } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-                     alert("No microphone found. Please ensure a microphone is connected and enabled.");
-                } else {
-                    alert(`Could not start recording: ${error.name}`);
-                }
-                stopRecording(true);
-            }
-        }
-
-        /**
-         * Stops the audio recording if active.
-         * @param {boolean} force - If true, bypasses some checks and forces UI reset.
-         */
-        function stopRecording(force = false) {
-            console.log("stopRecording called. isRecording:", isRecording, "force:", force);
-            if (mediaRecorder && (isRecording || force)) {
-                try {
-                    // Only call stop if actually recording/paused
-                    if (mediaRecorder.state === "recording" || mediaRecorder.state === "paused") {
-                        mediaRecorder.stop();
-                        console.log("MediaRecorder.stop() called.");
-                        // onstop handles UI reset after processing
-                    } else if (force) {
-                         console.log("Recorder not active, but forcing cleanup.");
-                         // Force immediate UI reset if recorder wasn't active but we need cleanup
-                         resetRecordingUI();
-                    }
-                } catch (error) {
-                     console.error("Error calling mediaRecorder.stop():", error);
-                     resetRecordingUI(); // Force UI reset on error
-                }
-            } else if (!force) {
-                console.log("Not recording or recorder not available.");
-            } else if (force) {
-                 // If forcing but recorder doesn't exist or wasn't recording
-                 resetRecordingUI();
-            }
-        }
-
-        /**
-        * Helper function to reset recording related UI and state variables.
-        */
-        function resetRecordingUI() {
-            console.log("Resetting recording UI and state.");
-            isRecording = false;
-            if (recordAudioButton) {
-                recordAudioButton.classList.remove('recording');
-                recordAudioButton.textContent = '🎙️';
-                recordAudioButton.title = 'Record audio';
-            }
-            if (recordingStatus) recordingStatus.classList.remove('visible');
-            if (recordingTimerInterval) {
-                clearInterval(recordingTimerInterval);
-                recordingTimerInterval = null;
-            }
-             // Stop stream tracks if they exist
-            if (recorderStream) {
-                recorderStream.getTracks().forEach(track => track.stop());
-                console.log("Microphone stream tracks stopped (reset UI).");
-                recorderStream = null;
-            }
-            mediaRecorder = null;
-            audioChunks = [];
-            setLoadingState(false); // Ensure UI is generally enabled
-        }
+        // --- Audio Recording Functions --- (Added exclusivity check)
+        async function toggleRecording() { console.log("toggleRecording called. isRecording:", isRecording); if (isRecording) stopRecording(); else { if (!checkMediaExclusivity('audio')) return; if (sendButton.disabled && !isRecording) { const isDisabled = !currentUser || !API_KEY || !activeChatId; if (isDisabled) { console.warn("Cannot start recording: App state prevents it."); return; } if (userInput.placeholder.includes("Generating") || userInput.placeholder.includes("Sending")) { console.warn("Cannot start recording: App busy."); alert("Wait for current action."); return; } } await startRecording(); } }
+        async function startRecording() { console.log("Attempting to start recording..."); removeAllSelectedMedia(); if (!navigator.mediaDevices?.getUserMedia) { alert("Audio recording not supported."); console.error("getUserMedia not supported."); return; } try { console.log("Requesting microphone..."); if (recorderStream) recorderStream.getTracks().forEach(track => track.stop()); const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); recorderStream = stream; console.log("Mic access granted."); recordAudioButton.disabled = true; let options = {}; const preferred = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/aac', 'audio/mp4']; for (const mime of preferred) { if (MediaRecorder.isTypeSupported(mime)) { options.mimeType = mime; break; } } if (!options.mimeType) console.warn("Using browser default MIME type."); mediaRecorder = new MediaRecorder(stream, options); const actualMimeType = mediaRecorder.mimeType; console.log("Recorder initialized. Actual MIME:", actualMimeType); audioChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); }; mediaRecorder.onstop = () => { console.log("Recorder stopped. Chunks:", audioChunks.length); if (recorderStream) { recorderStream.getTracks().forEach(t => t.stop()); console.log("Mic tracks stopped."); recorderStream = null; } resetRecordingUI(false); // Reset UI but don't re-enable yet if (audioChunks.length === 0) { console.warn("No audio data."); setLoadingState(false); return; } const blob = new Blob(audioChunks, { type: actualMimeType }); audioChunks = []; const sizeMB = blob.size / 1024 / 1024; console.log(`Blob created. Size: ${sizeMB.toFixed(3)} MB, Type: ${actualMimeType}`); if (blob.size === 0) { alert("Recording failed: No data."); setLoadingState(false); return; } if (sizeMB > MAX_AUDIO_SIZE_MB) { alert(`Recording too large (${sizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.`); setLoadingState(false); return; } const reader = new FileReader(); reader.onloadend = () => { if (reader.result?.startsWith('data:')) { const finalMime = actualMimeType.split(';')[0]; selectedMediaItems = [{ id: nextMediaId++, type: 'audio', file: null, base64: reader.result, mimeType: finalMime, name: `recording-${new Date().toISOString().substring(0, 19).replace(/[:T]/g, '-')}.${finalMime.split('/')[1] || 'audio'}` }]; displayMediaPreview(); } else { alert("Error processing recording (Invalid data URL)."); } setLoadingState(false); }; reader.onerror = (err) => { console.error("Blob read error:", err); alert("Error processing recording."); setLoadingState(false); }; reader.readAsDataURL(blob); }; mediaRecorder.onerror = (ev) => { console.error("Recorder error:", ev.error || ev); alert(`Recording error: ${ev.error?.name || 'Unknown'}`); stopRecording(true); }; mediaRecorder.start(); isRecording = true; recordingStartTime = Date.now(); recordAudioButton.classList.add('recording'); recordAudioButton.textContent = '🛑'; recordAudioButton.title = 'Stop recording'; recordingStatus.classList.add('visible'); recordingTimerSpan.textContent = '0s'; setLoadingState(true, "Recording..."); recordingTimerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000); recordingTimerSpan.textContent = `${elapsed}s`; if (elapsed >= RECORDING_TIME_LIMIT_SECONDS) { console.log("Time limit."); stopRecording(); alert(`Stopped after ${RECORDING_TIME_LIMIT_SECONDS}s.`); } }, 1000); console.log("Recording started..."); recordAudioButton.disabled = false; } catch (error) { console.error("getUserMedia/start error:", error); if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') alert("Microphone access denied. Allow in browser settings & refresh."); else if (error.name === 'NotFoundError') alert("No microphone found."); else alert(`Could not start recording: ${error.name}`); stopRecording(true); } }
+        function stopRecording(force = false) { console.log("stopRecording called. isRecording:", isRecording, "force:", force); if (mediaRecorder && (isRecording || force)) { try { if (mediaRecorder.state === "recording" || mediaRecorder.state === "paused") { mediaRecorder.stop(); console.log("mediaRecorder.stop() called."); } else if (force) resetRecordingUI(true); } catch (e) { console.error("mediaRecorder.stop() error:", e); resetRecordingUI(true); } } else if (force) resetRecordingUI(true); else console.log("Not recording or recorder unavailable."); }
+        function resetRecordingUI(enableUI = true) { console.log("Resetting recording UI. enableUI:", enableUI); isRecording = false; if (recordAudioButton) { recordAudioButton.classList.remove('recording'); recordAudioButton.textContent = '🎙️'; recordAudioButton.title = 'Record audio'; } if (recordingStatus) recordingStatus.classList.remove('visible'); if (recordingTimerInterval) { clearInterval(recordingTimerInterval); recordingTimerInterval = null; } if (recorderStream) { recorderStream.getTracks().forEach(t => t.stop()); console.log("Mic tracks stopped (reset UI)."); recorderStream = null; } mediaRecorder = null; audioChunks = []; if (enableUI) setLoadingState(false); }
 
 
-        // --- Chat Creation, Deletion, Switching ---
-        // (No changes needed)
-        async function createNewChat() {
-            if (!currentUser) { displayError("Please log in."); return; }
-            setLoadingState(true, "Creating chat...");
-            removeAllSelectedMedia(); // Clear media on new chat
-            const newChatRef = db.collection('chats').doc();
-            const timestamp = firebase.firestore.FieldValue.serverTimestamp();
-            try {
-                await newChatRef.set({ userId: currentUser.uid, title: NEW_CHAT_TITLE, createdAt: timestamp, lastUpdated: timestamp });
-                console.log("New chat created:", newChatRef.id);
-            } catch (error) { console.error("Error creating new chat:", error); displayError("Failed to create chat."); setLoadingState(false); }
-        }
-        function handleChatListClick(event) {
-             const target = event.target;
-             const deleteButton = target.closest('.delete-chat-button');
-             if (deleteButton) { event.stopPropagation(); const chatId = deleteButton.dataset.id; const chatListItem = deleteButton.closest('.chat-list-item'); const chatTitle = chatListItem?.textContent?.replace(deleteButton.textContent, '').trim() || 'this chat'; if (chatId) { confirmAndDeleteChat(chatId, chatTitle); } return; }
-             const item = target.closest('.chat-list-item'); const clickedId = item?.dataset?.id; if (item && clickedId && clickedId !== activeChatId) { switchChat(clickedId); }
-        }
-        function confirmAndDeleteChat(chatId, chatTitle) { if (!currentUser || !chatId) return; if (confirm(`Delete chat "${chatTitle}" permanently?`)) { deleteChatFromFirestore(chatId); } else { console.log(`Deletion cancelled for chat: ${chatId}`); } }
-        async function deleteChatFromFirestore(chatId) {
-            if (!currentUser || !chatId) return; isDeletingChat = true; console.log(`[Delete Start] Chat: ${chatId}`); setLoadingState(true, "Deleting chat...");
-            const chatDocRef = db.collection('chats').doc(chatId); const messagesRef = chatDocRef.collection('messages');
-            try {
-                const messagesSnapshot = await messagesRef.get(); if (!messagesSnapshot.empty) { const batch = db.batch(); messagesSnapshot.docs.forEach(doc => { batch.delete(doc.ref); }); await batch.commit(); console.log(`[Delete] Deleted ${messagesSnapshot.size} messages.`); }
-                await chatDocRef.delete(); console.log(`[Delete Success] Chat doc: ${chatId}`);
-                if (activeChatId === chatId) {
-                    activeChatId = null; currentChatHistory = []; if (activeChatListener) { activeChatListener(); activeChatListener = null; } chatArea.innerHTML = ''; renderGreetingOrLoginPrompt();
-                    userInput.placeholder = "Select or create chat"; sendButton.disabled = true; mcqModeCheckbox.disabled = true;
-                    imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
-                    removeAllSelectedMedia();
-                }
-            } catch (error) { console.error(`[Delete Error] Chat ${chatId}:`, error); displayError(`Failed to delete chat.`); setLoadingState(false); }
-            finally { setTimeout(() => { isDeletingChat = false; console.log(`[Delete End] Chat: ${chatId}`); }, 500); }
-        }
-        function switchChat(chatId) {
-             if (!currentUser || !chatId || chatId === activeChatId) return; console.log("Switching to chat:", chatId); setLoadingState(true, "Loading chat..."); activeChatId = chatId;
-             removeAllSelectedMedia(); highlightActiveChatInSidebar(); userInput.value = ''; autoGrowTextarea(); mcqModeCheckbox.checked = false; userInput.placeholder = "Loading messages...";
-             sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
-             loadAndListenForActiveChat(chatId);
-        }
+        // --- Chat Creation, Deletion, Switching --- (No changes)
+        async function createNewChat() { if (!currentUser) { displayError("Please log in."); return; } setLoadingState(true, "Creating chat..."); removeAllSelectedMedia(); const newChatRef = db.collection('chats').doc(); const ts = firebase.firestore.FieldValue.serverTimestamp(); try { await newChatRef.set({ userId: currentUser.uid, title: NEW_CHAT_TITLE, createdAt: ts, lastUpdated: ts }); console.log("New chat created:", newChatRef.id); } catch (e) { console.error("Error creating new chat:", e); displayError("Failed to create chat."); setLoadingState(false); } }
+        function handleChatListClick(event) { const target = event.target; const delBtn = target.closest('.delete-chat-button'); if (delBtn) { event.stopPropagation(); const chatId = delBtn.dataset.id; const item = delBtn.closest('.chat-list-item'); const title = item?.textContent?.replace(delBtn.textContent, '').trim() || 'this chat'; if (chatId) confirmAndDeleteChat(chatId, title); return; } const item = target.closest('.chat-list-item'); const id = item?.dataset?.id; if (item && id && id !== activeChatId) switchChat(id); }
+        function confirmAndDeleteChat(chatId, chatTitle) { if (!currentUser || !chatId) return; if (confirm(`Delete chat "${chatTitle}" permanently?`)) deleteChatFromFirestore(chatId); else console.log(`Deletion cancelled: ${chatId}`); }
+        async function deleteChatFromFirestore(chatId) { if (!currentUser || !chatId) return; isDeletingChat = true; console.log(`[Delete Start] ${chatId}`); setLoadingState(true, "Deleting chat..."); const chatRef = db.collection('chats').doc(chatId); const msgRef = chatRef.collection('messages'); try { const msgSnap = await msgRef.get(); if (!msgSnap.empty) { const batch = db.batch(); msgSnap.docs.forEach(d => batch.delete(d.ref)); await batch.commit(); console.log(`[Delete] ${msgSnap.size} messages.`); } await chatRef.delete(); console.log(`[Delete Success] ${chatId}`); if (activeChatId === chatId) { activeChatId = null; currentChatHistory = []; if (activeChatListener) { activeChatListener(); activeChatListener = null; } chatArea.innerHTML = ''; renderGreetingOrLoginPrompt(); userInput.placeholder = "Select or create chat"; sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; removeAllSelectedMedia(); } } catch (e) { console.error(`[Delete Error] ${chatId}:`, e); displayError(`Failed to delete chat.`); setLoadingState(false); } finally { setTimeout(() => { isDeletingChat = false; console.log(`[Delete End] ${chatId}`); }, 500); } }
+        function switchChat(chatId) { if (!currentUser || !chatId || chatId === activeChatId) return; console.log("Switching to chat:", chatId); setLoadingState(true, "Loading chat..."); activeChatId = chatId; removeAllSelectedMedia(); highlightActiveChatInSidebar(); userInput.value = ''; autoGrowTextarea(); mcqModeCheckbox.checked = false; userInput.placeholder = "Loading messages..."; sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; loadAndListenForActiveChat(chatId); }
 
-        // --- Message Loading (Firestore) ---
-        // (No changes needed)
-        function loadAndListenForActiveChat(chatId) {
-            if (!currentUser || !chatId) { chatArea.innerHTML = ''; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); setLoadingState(false); sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; return; }
-            if (activeChatListener) { activeChatListener(); activeChatListener = null; }
+        // --- Message Loading (Firestore) --- (No changes)
+        function loadAndListenForActiveChat(chatId) { if (!currentUser || !chatId) { chatArea.innerHTML = ''; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); setLoadingState(false); sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; return; } if (activeChatListener) { activeChatListener(); activeChatListener = null; } const msgRef = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'asc'); chatArea.innerHTML = ''; const loadingMsg = displayMessage("Loading chat history...", 'ai', ['thinking']); scrollToBottom(true); console.log(`Listening messages ${chatId}`); activeChatListener = msgRef.onSnapshot(snap => { console.log(`Snapshot ${chatId}:`, snap.size); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; if (snap.empty && activeChatId === chatId) { const item = chatListContainer.querySelector(`.chat-list-item[data-id="${chatId}"]`); const title = item?.textContent?.replace(DELETE_ICON, '').trim() || ''; if (title && title !== NEW_CHAT_TITLE) displayMessage("Chat empty. Send a message!", 'ai'); else renderGreetingOrLoginPrompt(); } else { snap.forEach(doc => { const msg = doc.data(); const text = msg.text || ""; const role = msg.role === 'user' ? 'user' : 'model'; currentChatHistory.push({ role: role, parts: [{ text: text }] }); displayMessage(text, role, [], null, msg); }); } scrollToBottom(true); setLoadingState(false); const enable = !API_KEY; sendButton.disabled = enable; mcqModeCheckbox.disabled = enable; imageUploadButton.disabled = enable; pdfUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable; userInput.placeholder = "Enter prompt, attach media, or paste URL"; if (!isTestMode && !isReviewMode) setTimeout(() => userInput.focus(), 100); }, err => { console.error(`Listen error ${chatId}:`, err); displayError("Could not load messages."); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; setLoadingState(false); sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; pdfUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true; userInput.placeholder = "Error loading chat"; }); }
 
-            const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'asc');
-            chatArea.innerHTML = ''; const loadingMsg = displayMessage("Loading chat history...", 'ai', ['thinking']); scrollToBottom(true); console.log(`Listening for messages in chat ${chatId}`);
-
-            activeChatListener = messagesRef.onSnapshot(snapshot => {
-                console.log(`Received messages snapshot for chat ${chatId}:`, snapshot.size, "messages"); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = [];
-
-                if (snapshot.empty && activeChatId === chatId) {
-                    const chatListItem = chatListContainer.querySelector(`.chat-list-item[data-id="${chatId}"]`); const chatTitle = chatListItem?.textContent?.replace(DELETE_ICON, '').trim() || '';
-                    if (chatTitle && chatTitle !== NEW_CHAT_TITLE) { displayMessage("Chat empty. Send a message!", 'ai'); } else { renderGreetingOrLoginPrompt(); }
-                } else {
-                    snapshot.forEach(doc => {
-                        const msgData = doc.data(); const text = typeof msgData.text === 'string' ? msgData.text : ""; const role = msgData.role === 'user' ? 'user' : 'model';
-                        currentChatHistory.push({ role: role, parts: [{ text: text }] });
-                        displayMessage(text, role, [], null, msgData);
-                    });
-                }
-                scrollToBottom(true); setLoadingState(false);
-                const enable = !API_KEY; sendButton.disabled = enable; mcqModeCheckbox.disabled = enable; imageUploadButton.disabled = enable; audioUploadButton.disabled = enable; recordAudioButton.disabled = enable;
-                userInput.placeholder = "Enter prompt, attach media, or paste URL";
-                 if (!isTestMode && !isReviewMode) { setTimeout(() => userInput.focus(), 100); }
-
-            }, error => {
-                console.error(`Error listening messages chat ${chatId}:`, error); displayError("Could not load messages."); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; setLoadingState(false);
-                sendButton.disabled = true; mcqModeCheckbox.disabled = true; imageUploadButton.disabled = true; audioUploadButton.disabled = true; recordAudioButton.disabled = true;
-                userInput.placeholder = "Error loading chat";
-            });
-        }
-
-        // --- Message Sending (Gemini API & Firestore Save) ---
-        // (Updated for multi-image and Firestore saving logic)
+        // --- Message Sending (Gemini API & Firestore Save) --- (Updated for PDF)
         async function handleSendMessage() {
             const userMessageTextRaw = userInput.value.trim();
-            // Capture the current state of selected media items for this message
-            const mediaItemsToSend = [...selectedMediaItems]; // Shallow copy
-
-            console.log("handleSendMessage triggered. Text:", userMessageTextRaw, "Media items:", mediaItemsToSend.length);
-
+            const mediaItemsToSend = [...selectedMediaItems]; // Copy state
+            console.log("handleSendMessage. Text:", userMessageTextRaw, "Media:", mediaItemsToSend.length);
             if (!API_KEY) { displayError("API Key not set."); return; }
             if (!currentUser) { displayError("Please log in."); return; }
             if (!activeChatId) { displayError("Please select/create a chat."); return; }
             if (!userMessageTextRaw && mediaItemsToSend.length === 0) { console.log("Nothing to send."); return; }
-            if (sendButton.disabled || isRecording) { console.log("Send button disabled or recording active."); return; }
+            if (sendButton.disabled || isRecording) { console.log("Send button disabled or recording."); return; }
 
             const isMCQRequest = mcqModeCheckbox.checked;
             setLoadingState(true, "Sending...");
-
-            // Clear input and preview AFTER copying values
-            userInput.value = ''; autoGrowTextarea();
-            if (isMCQRequest) mcqModeCheckbox.checked = false;
-            removeAllSelectedMedia(); // Clear preview & global state
+            userInput.value = ''; autoGrowTextarea(); if (isMCQRequest) mcqModeCheckbox.checked = false;
+            removeAllSelectedMedia(); // Clear preview & global state AFTER copying
 
             const timestamp = firebase.firestore.FieldValue.serverTimestamp();
             const messagesColRef = db.collection('chats').doc(activeChatId).collection('messages');
             const chatDocRef = db.collection('chats').doc(activeChatId);
-
             let isFirstUserMessageInNewChat = false;
             let potentialTestTitle = null;
 
-            const youtubeMatch = userMessageTextRaw.match(youtubeRegex);
-            const youtubeUrl = youtubeMatch ? youtubeMatch[0] : null;
-            const youtubeVideoId = youtubeMatch ? youtubeMatch[1] : null;
-            if (youtubeUrl) console.log("Detected YouTube URL:", youtubeUrl);
+            const youtubeMatch = userMessageTextRaw.match(youtubeRegex); const youtubeUrl = youtubeMatch?.[0]; const youtubeVideoId = youtubeMatch?.[1]; if (youtubeUrl) console.log("YT URL:", youtubeUrl);
 
-             // --- Prepare User Message Data for Firestore ---
+             // Prep user msg for Firestore
              const userMsgData = { role: "user", text: userMessageTextRaw, timestamp: timestamp };
              if (youtubeVideoId) userMsgData.youtubeVideoId = youtubeVideoId;
+             const singleAudio = mediaItemsToSend.find(i => i.type === 'audio');
+             const images = mediaItemsToSend.filter(i => i.type === 'image');
+             const pdfs = mediaItemsToSend.filter(i => i.type === 'pdf');
 
-             const singleAudioItem = mediaItemsToSend.find(item => item.type === 'audio');
-             const imageItems = mediaItemsToSend.filter(item => item.type === 'image');
+             if (singleAudio) { userMsgData.mediaType = 'audio'; userMsgData.mediaData = singleAudio.base64; userMsgData.mediaMimeType = singleAudio.mimeType; userMsgData.mediaName = singleAudio.name; }
+             else if (images.length === 1) { userMsgData.mediaType = 'image'; userMsgData.mediaData = images[0].base64; userMsgData.mediaMimeType = images[0].mimeType; userMsgData.mediaName = images[0].name; }
+             else if (images.length > 1) { userMsgData.mediaType = 'multi-image'; userMsgData.mediaCount = images.length; }
+             else if (pdfs.length === 1 && pdfs[0].file.size < 5 * 1024 * 1024) { /* Small single PDF - maybe save base64? Still risky */ userMsgData.mediaType = 'pdf'; userMsgData.mediaData = pdfs[0].base64; userMsgData.mediaMimeType = pdfs[0].mimeType; userMsgData.mediaName = pdfs[0].name; console.warn("Saving base64 for single small PDF to Firestore - may hit limits."); }
+             else if (pdfs.length > 0) { userMsgData.mediaType = 'multi-pdf'; userMsgData.mediaCount = pdfs.length; userMsgData.mediaNames = pdfs.map(p => p.name); } // Save names for multi-pdf
 
-             if (singleAudioItem) {
-                 userMsgData.mediaType = 'audio';
-                 userMsgData.mediaData = singleAudioItem.base64; // Store base64 for playback
-                 userMsgData.mediaMimeType = singleAudioItem.mimeType;
-                 userMsgData.mediaName = singleAudioItem.name;
-             } else if (imageItems.length === 1) {
-                 userMsgData.mediaType = 'image';
-                 userMsgData.mediaData = imageItems[0].base64; // Store base64 for single image display
-                 userMsgData.mediaMimeType = imageItems[0].mimeType;
-                 userMsgData.mediaName = imageItems[0].name;
-             } else if (imageItems.length > 1) {
-                 userMsgData.mediaType = 'multi-image';
-                 userMsgData.mediaCount = imageItems.length;
-                 // Optional: Store names/types, but NOT base64 for multiple images
-                 // userMsgData.mediaNames = imageItems.map(img => img.name);
-             }
+             const logMsg = { ...userMsgData }; if (logMsg.mediaData) logMsg.mediaData = `[${logMsg.mediaType} Base64...]`; console.log("Saving User Msg:", logMsg);
 
-             const loggableUserMsgData = { ...userMsgData };
-             if (loggableUserMsgData.mediaData) loggableUserMsgData.mediaData = `[${loggableUserMsgData.mediaType} Base64 Data...]`;
-             console.log("Saving User Message to Firestore:", loggableUserMsgData);
-
-             // --- Save User Message to Firestore ---
+             // Save User Msg to FS
              try {
-                 const chatSnap = await chatDocRef.get();
-                 if (chatSnap.exists && chatSnap.data().title === NEW_CHAT_TITLE) { const messagesSnap = await messagesColRef.limit(1).get(); if (messagesSnap.empty) { isFirstUserMessageInNewChat = true; } }
-                 await messagesColRef.add(userMsgData);
-                 await chatDocRef.update({ lastUpdated: timestamp });
-                 console.log("User message saved to Firestore.");
-                 if (isFirstUserMessageInNewChat) {
-                    let titleSource = userMessageTextRaw;
-                    if (!titleSource) { if (singleAudioItem) titleSource = "Audio Message"; else if (imageItems.length > 0) titleSource = imageItems.length > 1 ? "Multiple Images" : "Image Upload"; else titleSource = NEW_CHAT_TITLE; }
-                    const generatedTitle = generateChatTitle(titleSource); if (generatedTitle && generatedTitle !== NEW_CHAT_TITLE) { await updateActiveChatTitle(generatedTitle); console.log("Chat title updated:", generatedTitle); }
-                 }
-             } catch(error) { console.error("Error saving user message:", error); displayError("Failed to save message to database."); setLoadingState(false); return; }
+                 const chatSnap = await chatDocRef.get(); if (chatSnap.exists && chatSnap.data().title === NEW_CHAT_TITLE) { const msgSnap = await messagesColRef.limit(1).get(); if (msgSnap.empty) isFirstUserMessageInNewChat = true; }
+                 await messagesColRef.add(userMsgData); await chatDocRef.update({ lastUpdated: timestamp }); console.log("User msg saved.");
+                 if (isFirstUserMessageInNewChat) { let titleSrc = userMessageTextRaw; if (!titleSrc) { if (singleAudio) titleSrc = "Audio"; else if (images.length > 0) titleSrc = images.length > 1 ? "Images" : "Image"; else if (pdfs.length > 0) titleSrc = pdfs.length > 1 ? "PDFs" : "PDF"; else titleSrc = NEW_CHAT_TITLE; } const genTitle = generateChatTitle(titleSrc); if (genTitle !== NEW_CHAT_TITLE) { await updateActiveChatTitle(genTitle); console.log("Title updated:", genTitle); } }
+             } catch(e) { console.error("Save user msg error:", e); displayError("Failed save message."); setLoadingState(false); return; }
 
-             const thinking = displayMessage("Thinking...", 'ai', ['thinking']);
-             scrollToBottom();
+             const thinking = displayMessage("Thinking...", 'ai', ['thinking']); scrollToBottom();
 
-            // --- Prepare Parts for CURRENT API Call ---
-            const currentUserPartsForAPI = [];
-            let userTextForPrompt = userMessageTextRaw;
+            // Prep parts for API
+            const apiParts = []; let userText = userMessageTextRaw;
+            if (isMCQRequest) { if (!userText && mediaItemsToSend.length === 0) { displayError("Need prompt/media for MCQs."); removeMessageElement(thinking); setLoadingState(false); return; } let base = userText; if (!base) { if (singleAudio) base="Audio"; else if (images.length>0) base=images.length>1?"Images":"Image"; else if (pdfs.length>0) base=pdfs.length>1?"PDFs":"PDF"; else base="Test"; } potentialTestTitle = generateChatTitle(base) + ` (${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})})`; const instr = `\n\nPlease generate multiple choice questions based on the provided input. Provide the response *only* as a valid JSON array string, enclosed within \`\`\`json ... \`\`\`. Each object must have "question" (obj with "en"), "options" (array of 4 obj with "en"), "answer" ('A'-'D'), and "explanation" (obj with "en"). English only. No text outside JSON.`; userText = userText ? userText + instr : instr; console.log("MCQ mode. Title:", potentialTestTitle); }
+            if (userText) apiParts.push({ text: userText });
 
-            if (isMCQRequest) { // MCQ Prompt Modification
-                 if (!userMessageTextRaw && mediaItemsToSend.length === 0) { displayError("Cannot generate MCQs without a text prompt or media."); removeMessageElement(thinking); setLoadingState(false); return; }
-                 let baseTitle = userMessageTextRaw;
-                 if (!baseTitle) { if (singleAudioItem) baseTitle = "Audio Analysis"; else if (imageItems.length > 0) baseTitle = imageItems.length > 1 ? "Image Comparison" : "Image Analysis"; else baseTitle = "Generated Test"; }
-                 potentialTestTitle = generateChatTitle(baseTitle) + ` (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`;
-                 const mcqInstructions = `\n\nPlease generate multiple choice questions based on the provided text, image(s), or audio. Provide the response *only* as a valid JSON array string, enclosed within \`\`\`json ... \`\`\`. Each object in the array must have "question" (object with "en" and "ta" strings), "options" (array of 4 objects with "en" and "ta" strings), "answer" (string 'A', 'B', 'C', or 'D'), and "explanation" (object with "en" and "ta" strings). Provide accurate English content only. Do not include any text outside the JSON structure.`; // Modified for English only
-                 userTextForPrompt = userTextForPrompt ? userTextForPrompt + mcqInstructions : mcqInstructions;
-                 console.log("MCQ mode: Modified text prompt for API, title:", potentialTestTitle);
-             }
+            let totalSize = 0;
+            mediaItemsToSend.forEach(item => {
+                if (item.base64 && item.mimeType) {
+                    const b64 = item.base64.substring(item.base64.indexOf(',') + 1);
+                    if (b64) { apiParts.push({ inlineData: { mimeType: item.mimeType, data: b64 } }); totalSize += b64.length * 0.75; }
+                    else console.error(`Failed get base64 for ${item.name}`);
+                }
+            });
+            if (youtubeUrl) { apiParts.push({ fileData: { fileUri: youtubeUrl } }); console.log("Adding YT URI."); }
 
-            if (userTextForPrompt) currentUserPartsForAPI.push({ text: userTextForPrompt });
+            const history = currentChatHistory.map(m => ({ role: m.role, parts: m.parts.filter(p => p.text) })).filter(m => m.parts.length > 0);
+            const contents = [...history]; if (apiParts.length > 0) contents.push({ role: "user", parts: apiParts }); else { console.warn("No parts for API."); removeMessageElement(thinking); setLoadingState(false); return; }
 
-            // Add Media Parts (Audio or Multiple Images)
-            let totalMediaSize = 0;
-            if (singleAudioItem && singleAudioItem.base64 && singleAudioItem.mimeType) {
-                 const base64DataOnly = singleAudioItem.base64.substring(singleAudioItem.base64.indexOf(',') + 1);
-                 if (base64DataOnly) {
-                     currentUserPartsForAPI.push({ inlineData: { mimeType: singleAudioItem.mimeType, data: base64DataOnly } });
-                     console.log(`Preparing audio for API: ${singleAudioItem.mimeType}`);
-                     totalMediaSize += base64DataOnly.length * 0.75; // Base64 size approx
-                 } else { console.error("Failed to extract base64 data from audio item."); /* Handle error */ }
-            } else if (imageItems.length > 0) {
-                 imageItems.forEach(item => {
-                     if (item.base64 && item.mimeType) {
-                         const base64DataOnly = item.base64.substring(item.base64.indexOf(',') + 1);
-                         if (base64DataOnly) {
-                             currentUserPartsForAPI.push({ inlineData: { mimeType: item.mimeType, data: base64DataOnly } });
-                             totalMediaSize += base64DataOnly.length * 0.75;
-                         } else { console.error(`Failed to extract base64 data from image item: ${item.name}`); /* Handle error */ }
-                     }
-                 });
-                 console.log(`Preparing ${imageItems.length} images for API.`);
-            }
+            let estSize = JSON.stringify(contents).length / 1024 / 1024; console.log(`Est. API size: ${estSize.toFixed(2)} MB (Media approx: ${(totalSize / 1024 / 1024).toFixed(2)} MB)`);
+            if (estSize > 18) { console.warn("Request > 18MB, might fail!"); alert("Warning: Content size is large, API request might fail."); }
 
-            if (youtubeUrl) { // Add YouTube URL if present
-                currentUserPartsForAPI.push({ fileData: { fileUri: youtubeUrl } });
-                console.log(`Preparing YouTube URI for API: ${youtubeUrl}`);
-            }
-
-            const apiHistoryForCall = currentChatHistory.map(msg => ({ role: msg.role, parts: msg.parts.filter(part => part.text) })).filter(msg => msg.parts.length > 0);
-            const finalContentsForAPI = [...apiHistoryForCall];
-            if (currentUserPartsForAPI.length > 0) finalContentsForAPI.push({ role: "user", parts: currentUserPartsForAPI });
-            else { console.warn("No valid parts for API call."); removeMessageElement(thinking); setLoadingState(false); return; }
-
-            // Estimate size and warn
-            let estimatedSizeMB = (JSON.stringify(finalContentsForAPI).length - totalMediaSize + totalMediaSize) / 1024 / 1024; // Rough estimate
-             console.log(`Estimated API request size: ${estimatedSizeMB.toFixed(2)} MB (Media size approx: ${(totalMediaSize / 1024 / 1024).toFixed(2)} MB)`);
-             if (estimatedSizeMB > 18) { // Stricter warning limit
-                 console.warn("API request size is large, might exceed 20MB limit for inline data. Gemini may reject the request.");
-                 alert("Warning: The message content (especially multiple images or large audio) is large and might exceed the API limit, potentially causing an error.");
-             }
-
-             console.log("Calling Gemini API (Model:", MODEL_NAME, ")");
-             // --- Call Gemini API ---
+             console.log("Calling Gemini API...");
+             // --- Call API ---
              try {
-                 const response = await fetch(API_URL_BASE + API_KEY, {
-                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                     body: JSON.stringify({ contents: finalContentsForAPI, safetySettings: [ { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, ] }),
-                 });
+                 const response = await fetch(API_URL_BASE + API_KEY, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents, safetySettings: [ { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, ] }), });
                  removeMessageElement(thinking);
+                 let aiMsg = { role: "model", text: "Error: No valid response.", timestamp: firebase.firestore.FieldValue.serverTimestamp(), mcqData: null, mcqTitle: null }; let error = true;
+                 if (!response.ok) { let details = `API error (${response.status})`; let json = {}; try { json = await response.json(); details = json.error?.message || details; console.error("API Err Body:", json); if (details.includes("size limit")) details += "\nTry smaller/fewer files."; else if (details.includes("invalid API key")) { details += "\nKey invalid?"; localStorage.removeItem(STORAGE_KEY_API_KEY); API_KEY=''; } else if (response.status === 400) details += "\nCheck input format.";} catch {} console.error("API Error:", response.status, details); aiMsg.text = `Error: ${details}`; error = true; }
+                 else { const data = await response.json(); console.log("API OK Resp:", JSON.stringify(data).substring(0, 500) + "..."); let text = ""; let block = false; error = false; if (data.promptFeedback?.blockReason) { aiMsg.text = `Blocked (Prompt): ${data.promptFeedback.blockReason}`; block = true; error = true; console.warn("Prompt blocked."); } else if (data.candidates?.[0]) { const cand = data.candidates[0]; if (cand.finishReason === 'SAFETY') { aiMsg.text = `Blocked (Safety): ${cand.safetyRatings?.map(r=>r.category+':'+r.probability).join(',')||'?'}`; block = true; error = true; console.warn("Safety blocked."); } else if (cand.finishReason === 'RECITATION') { aiMsg.text = `Blocked (Recitation)`; block = true; error = true; console.warn("Recitation blocked."); } else if (cand.content?.parts?.length > 0) { text = cand.content.parts.map(p => p.text || '').join(''); aiMsg.text = text; error = false; if (isMCQRequest && !block) { console.log("Parsing MCQ..."); try { const match = text.match(/```json\s*([\s\S]*?)\s*```/); const str = match ? match[1].trim() : text.trim(); if (str.startsWith('[') && str.endsWith(']')) { const mcqs = JSON.parse(str); const valid = Array.isArray(mcqs) && mcqs.length > 0 && mcqs.every(q => q && q.question?.en && Array.isArray(q.options) && q.options.length===4 && q.options.every(o=>o?.en) && q.answer && q.explanation?.en); if (valid) { mcqs.forEach(q => { if(!q.question.ta)q.question.ta=q.question.en; if(!q.explanation.ta)q.explanation.ta=q.explanation.en; q.options.forEach(o=>{if(!o.ta)o.ta=o.en;}); }); aiMsg.text=`Gen ${mcqs.length} MCQs.`; aiMsg.mcqData=mcqs; aiMsg.mcqTitle=potentialTestTitle; console.log("MCQ OK:", mcqs.length); error=false; } else { console.warn("MCQ JSON invalid."); aiMsg.text="MCQ fmt err.\n\n"+text; error=true; aiMsg.mcqData=null; aiMsg.mcqTitle=null; } } else { console.warn("MCQ not array."); aiMsg.text="MCQ JSON err.\n\n"+text; error=true; aiMsg.mcqData=null; aiMsg.mcqTitle=null; } } catch (pe) { console.error("MCQ parse err:", pe); aiMsg.text="Err parsing MCQ.\n\n"+text; error=true; aiMsg.mcqData=null; aiMsg.mcqTitle=null; } } } else if (cand.finishReason === 'MAX_TOKENS') { console.warn("MAX_TOKENS."); aiMsg.text = text + "\n\n(Truncated)"; error = false; } else if (cand.finishReason === 'STOP') { console.warn("STOP no text."); aiMsg.text = "(No text response)"; error = false; } else { console.warn("Other reason:", cand.finishReason); aiMsg.text = `Unexpected response. (${cand.finishReason||'?'})`; error = true; } } else { console.error("No candidates."); aiMsg.text = "Error: No response data."; error = true; } }
+                 // Save AI Resp to FS
+                 try { const logAI = { ...aiMsg }; if (logAI.mcqData) logAI.mcqData = `[${logAI.mcqData.length} MCQs]`; console.log("Saving AI Resp:", logAI); await messagesColRef.add(aiMsg); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); console.log("AI resp saved."); }
+                 catch (se) { console.error("Save AI resp error:", se); displayError(`Failed save response: ${aiMsg.text}`); }
+             } catch (fe) { console.error("API Fetch Err:", fe); removeMessageElement(thinking); const errTxt = `API Network Error: ${fe.message||"?"}`; displayError(errTxt); try { await messagesColRef.add({ role: "model", text: errTxt, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); } catch (se) { console.error("Fail save fetch err:", se); }
+             } finally { setLoadingState(false); if (!isTestMode && !isReviewMode && activeChatId) setTimeout(() => userInput.focus(), 100); }
+        } // End handleSendMessage
 
-                 // --- Process API Response ---
-                 let aiMsgData = { role: "model", text: "Error: No valid response from API.", timestamp: firebase.firestore.FieldValue.serverTimestamp(), mcqData: null, mcqTitle: null };
-                 let displayAsError = true;
-
-                 if (!response.ok) {
-                     let errorDetails = `API error (${response.status})`; let errorJson = {};
-                     try { errorJson = await response.json(); errorDetails = errorJson.error?.message || errorDetails; console.error("API Error Response Body:", errorJson); if (errorDetails.includes("inline data exceeds size limit")) errorDetails += "\nConsider using smaller/fewer images or a shorter audio file."; else if (errorDetails.includes("invalid API key")) { errorDetails += "\nAPI Key might be invalid."; localStorage.removeItem(STORAGE_KEY_API_KEY); API_KEY=''; } else if (response.status === 400 && errorDetails.includes("User location is not supported")) errorDetails += "\nYour region might not be supported for this model."; else if (response.status === 400) errorDetails += "\nCheck if input format (e.g., audio type, image data) is correct.";} catch {}
-                     console.error("API Error:", response.status, errorDetails); aiMsgData.text = `Error: ${errorDetails}`; displayAsError = true;
-                 } else {
-                     const data = await response.json(); console.log("API Response Data:", JSON.stringify(data, null, 2));
-                     let rawAiText = ""; let blocked = false; displayAsError = false;
-                     if (data.promptFeedback?.blockReason) { aiMsgData.text = `Blocked (Prompt): ${data.promptFeedback.blockReason}`; blocked = true; displayAsError = true; console.warn("Prompt blocked:", data.promptFeedback.blockReason); }
-                     else if (data.candidates && data.candidates.length > 0) {
-                         const candidate = data.candidates[0];
-                         if (candidate.finishReason === 'SAFETY') { aiMsgData.text = `Blocked (Response Safety): ${candidate.safetyRatings?.map(r => r.category + ': ' + r.probability).join(', ') || 'Reason unspecified'}`; blocked = true; displayAsError = true; console.warn("Response blocked due to safety:", candidate.safetyRatings); }
-                         else if (candidate.finishReason === 'RECITATION') { aiMsgData.text = `Blocked (Response Recitation)`; blocked = true; displayAsError = true; console.warn("Response blocked due to recitation."); }
-                         else if (candidate.content?.parts?.length > 0) {
-                             rawAiText = candidate.content.parts.map(part => part.text || '').join(''); aiMsgData.text = rawAiText; displayAsError = false;
-                             if (isMCQRequest && !blocked) { // MCQ Parsing (English Only)
-                                 console.log("Attempting to parse MCQ JSON...");
-                                 try {
-                                     const jsonMatch = rawAiText.match(/```json\s*([\s\S]*?)\s*```/); const jsonString = jsonMatch ? jsonMatch[1].trim() : rawAiText.trim();
-                                     if (jsonString.startsWith('[') && jsonString.endsWith(']')) {
-                                         const mcqs = JSON.parse(jsonString); // Simplified validation for English only
-                                         const isValidMCQArray = Array.isArray(mcqs) && mcqs.length > 0 && mcqs.every(q => q && typeof q.question?.en === 'string' && Array.isArray(q.options) && q.options.length === 4 && q.options.every(opt => opt && typeof opt.en === 'string') && typeof q.answer === 'string' && ['A','B','C','D'].includes(q.answer.toUpperCase()) && typeof q.explanation?.en === 'string' );
-                                         if (isValidMCQArray) { // Inject 'ta' fields with copies of 'en' for compatibility
-                                              mcqs.forEach(q => { if (!q.question.ta) q.question.ta = q.question.en; if (!q.explanation.ta) q.explanation.ta = q.explanation.en; q.options.forEach(opt => { if (!opt.ta) opt.ta = opt.en; }); });
-                                              aiMsgData.text = `Generated ${mcqs.length} MCQs.`; aiMsgData.mcqData = mcqs; aiMsgData.mcqTitle = potentialTestTitle; console.log("MCQs parsed successfully:", mcqs.length); displayAsError = false;
-                                         } else { console.warn("MCQ JSON validation failed."); aiMsgData.text = "MCQ format error (Invalid Structure).\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null; }
-                                     } else { console.warn("MCQ response not JSON array."); aiMsgData.text = "Expected MCQ JSON format error (Not an Array).\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null; }
-                                 } catch (parseError) { console.error("Failed to parse MCQ JSON:", parseError); aiMsgData.text = "Error parsing MCQ JSON.\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null; }
-                             } // End MCQ parsing
-                         } else if (candidate.finishReason === 'MAX_TOKENS') { console.warn("API response stopped due to MAX_TOKENS."); aiMsgData.text = rawAiText + "\n\n(Response may be truncated due to length limit)"; displayAsError = false; }
-                         else if (candidate.finishReason === 'STOP') { console.warn("API response finished with STOP but no text part found."); aiMsgData.text = "(Model response finished without text)"; displayAsError = false; }
-                         else { console.warn("Unexpected API finish reason:", candidate.finishReason); aiMsgData.text = `Sorry, received an unexpected response. (Reason: ${candidate.finishReason || 'Unknown'})`; displayAsError = true; }
-                     } else { console.error("API Error: No candidates found in response."); aiMsgData.text = "Error: No response data received from API."; displayAsError = true; }
-                 }
-
-                 // --- Save AI Response to Firestore ---
-                 try {
-                      const loggableAiMsgData = { ...aiMsgData, ...(aiMsgData.mcqData && { mcqData: `[${aiMsgData.mcqData.length} MCQs]` }) };
-                      console.log("Saving AI Response to Firestore:", loggableAiMsgData);
-                      await messagesColRef.add(aiMsgData); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() });
-                      console.log("AI response/error saved to Firestore.");
-                 } catch (saveError) { console.error("Error saving AI response:", saveError); displayError(`Failed to save response: ${aiMsgData.text}`); }
-
-             } catch (fetchError) { // Network errors etc.
-                 console.error("API Fetch/Network Error:", fetchError); removeMessageElement(thinking);
-                 const errorText = `API Network Error: ${fetchError.message || "Check connection."}`; displayError(errorText);
-                 try { await messagesColRef.add({ role: "model", text: errorText, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); } catch (saveError) { console.error("Failed to save fetch error message:", saveError); }
-             } finally {
-                 setLoadingState(false);
-                 if (!isTestMode && !isReviewMode && activeChatId) { setTimeout(() => userInput.focus(), 100); }
-             }
-        } // End of handleSendMessage
-
-        // --- Chat Title Generation/Update ---
-        // (No changes needed)
+        // --- Chat Title Generation/Update --- (No changes)
         function generateChatTitle(sourceText) { if (!sourceText || typeof sourceText !== 'string') return NEW_CHAT_TITLE; const text = sourceText.trim(); if (!text) return NEW_CHAT_TITLE; const title = text.split(/\s+/).slice(0, 5).join(' ').replace(/[.,!?;:]+$/, ''); return title.length > 35 ? title.substring(0, 32) + '...' : title; }
         async function updateActiveChatTitle(newTitle) { if (!currentUser || !activeChatId || !newTitle || typeof newTitle !== 'string' || !newTitle.trim() || newTitle.trim() === NEW_CHAT_TITLE) return; const finalTitle = newTitle.trim(); const chatDocRef = db.collection('chats').doc(activeChatId); try { await chatDocRef.update({ title: finalTitle }); console.log(`Chat ${activeChatId} title updated: "${finalTitle}"`); } catch (error) { console.error("Error updating chat title:", error); } }
 
 
-        // --- UI & Message Display Helpers ---
-        // (Updated displayMessage, setLoadingState)
+        // --- UI & Message Display Helpers --- (Updated displayMessage)
         function autoGrowTextarea() { userInput.style.height='auto'; userInput.style.height=(userInput.scrollHeight)+'px'; }
         function handleInputKeydown(event) { if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleSendMessage();} }
         function handleSuggestionClick(event) { if(event.target.classList.contains('suggestion-chip')){userInput.value=event.target.dataset.prompt||'';autoGrowTextarea();userInput.focus();} }
         function displayError(text) { console.error("Displaying Error:", text); displayMessage(`${text}`, 'ai', ['error-message']); scrollToBottom(); }
         function scrollToBottom(immediate = false) { chatArea.scrollTo({top:chatArea.scrollHeight,behavior:immediate?'auto':'smooth'}); }
-        function removeMessageElement(element) { if(element && element.parentNode === chatArea) { chatArea.removeChild(element); } }
-
-        function setLoadingState(isLoading, message = "Generating...") {
-             // console.log(`setLoadingState: isLoading=${isLoading}, isRecording=${isRecording}`);
-             const isAppDisabled = !currentUser || !API_KEY;
-             const isChatActive = !!activeChatId;
-
-             // --- Calculate individual button states ---
-             const isSidebarControlDisabled = isLoading || isAppDisabled || isRecording;
-             userInput.disabled = isLoading || isAppDisabled || isRecording;
-             mcqModeCheckbox.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
-             sendButton.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
-             imageUploadButton.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
-             audioUploadButton.disabled = isLoading || isAppDisabled || !isChatActive || isRecording;
-
-             let recordButtonDisabled = isLoading || isAppDisabled || !isChatActive;
-             if (isRecording) recordButtonDisabled = false; // ALWAYS allow clicking Stop
-             recordAudioButton.disabled = recordButtonDisabled;
-
-             startChatButton.disabled = isLoading || isAppDisabled || isRecording;
-             testSearchInput.disabled = isLoading || isAppDisabled || isRecording;
-             decreaseTextBtn.disabled = isSidebarControlDisabled || (currentUser && currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER);
-             increaseTextBtn.disabled = isSidebarControlDisabled || (currentUser && currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER);
-             themeToggleButton.disabled = isSidebarControlDisabled;
-
-             // --- Update placeholder text (English Only) ---
-             if (isRecording) { userInput.placeholder = "Recording audio..."; }
-             else if (isLoading) { userInput.placeholder = message; }
-             else if (isAppDisabled && !currentUser) { userInput.placeholder = "Please log in"; }
-             else if (isAppDisabled && currentUser) { userInput.placeholder = "API Key missing."; }
-             else if (!isChatActive) { userInput.placeholder = "Select or create a chat"; }
-             else { userInput.placeholder = "Enter prompt, attach media, or paste URL"; }
-        }
-
-        function switchView(viewName, cameFromTests = false) { // (No changes needed)
-            console.log("Switching view to:", viewName); chatView.classList.remove('active'); reviewView.classList.remove('active'); testView.classList.remove('active'); appContainer.classList.remove('hidden'); isTestMode = false; isReviewMode = false; cameFromAllTestsList = cameFromTests; saveReviewBtn.style.display = 'none'; exitReviewBtn.style.display = 'none';
-            if(viewName === 'test'){ appContainer.classList.add('hidden'); testView.classList.add('active'); isTestMode = true; }
-            else if(viewName === 'review'){ reviewView.classList.add('active'); isReviewMode = true; exitReviewBtn.style.display = 'inline-block'; exitReviewBtn.textContent = cameFromAllTestsList ? "Back to All Tests" : "Back to Chat"; }
-            else { chatView.classList.add('active'); if (currentUser && activeChatId && API_KEY && !isRecording) { setTimeout(() => userInput.focus(), 100); } }
-            if (viewName !== 'test' && testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; }
-        }
-
-        /**
-         * Displays a message in the chat area. Handles text, formatting, media, etc.
-         * (Updated for multi-image indicator)
-         */
-        function displayMessage(text, sender, cssClasses = [], appendHtml = null, messageData = null) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add('message', `${sender}-message`);
-            if (cssClasses?.length > 0) messageElement.classList.add(...cssClasses);
-
-            let hasContent = false;
-
-            // 1. Display Media (from messageData)
-            if (messageData?.mediaType === 'image' && messageData.mediaData) { // Single Image
-                try { const img = document.createElement('img'); img.src = messageData.mediaData; img.alt = messageData.mediaName || "Uploaded Image"; img.classList.add('uploaded-image'); img.loading = "lazy"; img.onerror = () => { img.alt = "Image load error"; img.src = ""; }; messageElement.appendChild(img); hasContent = true; } catch (e) { console.error("Error creating image element:", e); }
-            } else if (messageData?.mediaType === 'multi-image' && messageData.mediaCount > 0) { // Multi-Image Indicator
-                try { const indicator = document.createElement('div'); indicator.classList.add('multi-image-indicator'); indicator.textContent = `(${messageData.mediaCount} image${messageData.mediaCount > 1 ? 's' : ''} sent)`; messageElement.appendChild(indicator); hasContent = true; } catch (e) { console.error("Error creating multi-image indicator:", e); }
-            } else if (messageData?.mediaType === 'audio' && messageData.mediaData) { // Audio
-                try { const audioContainer = document.createElement('div'); audioContainer.classList.add('chat-audio-player'); const audioPlayer = document.createElement('audio'); audioPlayer.src = messageData.mediaData; audioPlayer.controls = true; audioPlayer.preload = "metadata"; if(messageData.mediaName) audioPlayer.title = messageData.mediaName; audioPlayer.onerror = () => { console.warn("Error loading audio player for src:", messageData.mediaData?.substring(0, 50)); audioContainer.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(Audio load error)</span>`; }; audioContainer.appendChild(audioPlayer); messageElement.appendChild(audioContainer); hasContent = true; } catch (e) { console.error("Error creating audio element:", e); }
-            }
-
-            // 2. Display Formatted Text Content
-            if (text) {
-                const messageContentContainer = document.createElement('div');
-                try {
-                    const tempDiv = document.createElement('div'); tempDiv.innerText = text; let formattedText = tempDiv.innerHTML;
-                    if (messageData?.mediaType !== 'image') { formattedText = formattedText.replace(imageUrlRegex, (match, imgUrl) => `<img src="${imgUrl}" class="chat-image" alt="Chat Image" loading="lazy" onerror="this.alt='Image URL load error'; this.src='';">`); }
-                    formattedText = formattedText.replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`).replace(/`([^`]+)`/g, (match, code) => `<code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>').replace(/\n/g, '<br>');
-                    messageContentContainer.innerHTML = formattedText; messageElement.appendChild(messageContentContainer); hasContent = true;
-                    if (text.includes('$') || text.includes('\\') || text.includes('^') || text.includes('_')) { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { setTimeout(() => { MathJax.typesetPromise([messageContentContainer]).catch(err => console.error('MathJax typesetting error:', err)); }, 50); } }
-                } catch (e) { console.error("Error formatting text content:", e); }
-            }
-
-            // 3. YouTube Embed
-            if (messageData?.youtubeVideoId) {
-                 try { const youtubeEmbedDiv = document.createElement('div'); youtubeEmbedDiv.classList.add('youtube-embed-container'); const iframe = document.createElement('iframe'); iframe.classList.add('chat-video'); iframe.src = `https://www.youtube.com/embed/${messageData.youtubeVideoId}`; iframe.title = "YouTube video player"; iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; iframe.allowFullscreen = true; iframe.loading = "lazy"; iframe.onerror = () => { youtubeEmbedDiv.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(YouTube embed error)</span>`; }; youtubeEmbedDiv.appendChild(iframe); messageElement.appendChild(youtubeEmbedDiv); hasContent = true; } catch (e) { console.error("Error creating YouTube embed:", e); }
-            }
-
-            // 4. MCQ Offer Button (AI only)
-            if (messageData?.role === 'model' && messageData?.mcqData?.length > 0) {
-                try { displayMCQOffer(messageData.mcqData, messageData.mcqTitle, messageElement); hasContent = true; } catch (e) { console.error("Error displaying MCQ offer:", e); }
-            }
-            // 5. Append Raw HTML (Use with caution)
-            else if (appendHtml) {
-                try { const appendDiv = document.createElement('div'); appendDiv.innerHTML = appendHtml; while (appendDiv.firstChild) { messageElement.appendChild(appendDiv.firstChild); } hasContent = true; } catch (e) { console.error("Error appending raw HTML:", e); }
-            }
-
-            if (hasContent || cssClasses.includes('thinking')) { chatArea.appendChild(messageElement); }
-            else { console.warn(`Skipping display of empty message. Sender: ${sender}, Text: '${text}', Data:`, messageData); }
-            return messageElement;
+        function removeMessageElement(element) { if(element?.parentNode === chatArea) { chatArea.removeChild(element); } }
+        function setLoadingState(isLoading, message = "Generating...") { /* ... (logic from v9.6) ... */ const isAppDisabled=!currentUser||!API_KEY; const isChatActive=!!activeChatId; const isSidebarControlDisabled=isLoading||isAppDisabled||isRecording; userInput.disabled=isLoading||isAppDisabled||isRecording; mcqModeCheckbox.disabled=isLoading||isAppDisabled||!isChatActive||isRecording; sendButton.disabled=isLoading||isAppDisabled||!isChatActive||isRecording; imageUploadButton.disabled=isLoading||isAppDisabled||!isChatActive||isRecording; pdfUploadButton.disabled=isLoading||isAppDisabled||!isChatActive||isRecording; audioUploadButton.disabled=isLoading||isAppDisabled||!isChatActive||isRecording; let recordButtonDisabled=isLoading||isAppDisabled||!isChatActive; if(isRecording)recordButtonDisabled=false; recordAudioButton.disabled=recordButtonDisabled; startChatButton.disabled=isLoading||isAppDisabled||isRecording; testSearchInput.disabled=isLoading||isAppDisabled||isRecording; decreaseTextBtn.disabled=isSidebarControlDisabled||(currentUser&&currentTextSizeMultiplier<=MIN_TEXT_SIZE_MULTIPLIER); increaseTextBtn.disabled=isSidebarControlDisabled||(currentUser&&currentTextSizeMultiplier>=MAX_TEXT_SIZE_MULTIPLIER); themeToggleButton.disabled=isSidebarControlDisabled; if(isRecording){userInput.placeholder="Recording audio...";}else if(isLoading){userInput.placeholder=message;}else if(isAppDisabled&&!currentUser){userInput.placeholder="Please log in";}else if(isAppDisabled&&currentUser){userInput.placeholder="API Key missing.";}else if(!isChatActive){userInput.placeholder="Select or create a chat";}else{userInput.placeholder="Enter prompt, attach media, or paste URL";} }
+        function switchView(viewName, cameFromTests = false) { /* ... (logic from v9.6) ... */ console.log("Switching view:",viewName); chatView.classList.remove('active'); reviewView.classList.remove('active'); testView.classList.remove('active'); appContainer.classList.remove('hidden'); isTestMode=false; isReviewMode=false; cameFromAllTestsList=cameFromTests; saveReviewBtn.style.display='none'; exitReviewBtn.style.display='none'; if(viewName==='test'){appContainer.classList.add('hidden'); testView.classList.add('active'); isTestMode=true;}else if(viewName==='review'){reviewView.classList.add('active'); isReviewMode=true; exitReviewBtn.style.display='inline-block'; exitReviewBtn.textContent=cameFromAllTestsList?"Back to All Tests":"Back to Chat";}else{chatView.classList.add('active'); if(currentUser&&activeChatId&&API_KEY&&!isRecording){setTimeout(()=>userInput.focus(),100);}} if(viewName!=='test'&&testTimerInterval){clearInterval(testTimerInterval); testTimerInterval=null;} }
+        function displayMessage(text, sender, cssClasses = [], appendHtml = null, messageData = null) { // (Updated for pdf indicator)
+            const el = document.createElement('div'); el.classList.add('message', `${sender}-message`); if (cssClasses?.length > 0) el.classList.add(...cssClasses); let hasContent = false;
+            if (messageData?.mediaType==='image'&&messageData.mediaData){try{const i=document.createElement('img');i.src=messageData.mediaData;i.alt=messageData.mediaName||"Image";i.classList.add('uploaded-image');i.loading="lazy";i.onerror=()=>{i.alt="Img error";i.src="";};el.appendChild(i);hasContent=true;}catch(e){console.error("Err img:",e);}}
+            else if (messageData?.mediaType==='multi-image'&&messageData.mediaCount>0){try{const d=document.createElement('div');d.classList.add('multi-image-indicator');d.textContent=`(${messageData.mediaCount} image${messageData.mediaCount>1?'s':''} sent)`;el.appendChild(d);hasContent=true;}catch(e){console.error("Err multi-img:",e);}}
+            else if (messageData?.mediaType==='pdf'&&messageData.mediaName){/* Single PDF - show name? indicator? */ try{const d=document.createElement('div');d.classList.add('multi-pdf-indicator');d.textContent=`(PDF: ${messageData.mediaName})`;el.appendChild(d);hasContent=true;}catch(e){console.error("Err pdf name:",e);}}
+            else if (messageData?.mediaType==='multi-pdf'&&messageData.mediaCount>0){try{const d=document.createElement('div');d.classList.add('multi-pdf-indicator');d.textContent=`(${messageData.mediaCount} PDF${messageData.mediaCount>1?'s':''} sent)`;el.appendChild(d);hasContent=true;}catch(e){console.error("Err multi-pdf:",e);}}
+            else if (messageData?.mediaType==='audio'&&messageData.mediaData){try{const c=document.createElement('div');c.classList.add('chat-audio-player');const a=document.createElement('audio');a.src=messageData.mediaData;a.controls=true;a.preload="metadata";if(messageData.mediaName)a.title=messageData.mediaName;a.onerror=()=>{console.warn("Err audio:",messageData.mediaData?.substring(0,50));c.innerHTML=`<span style='font-size:0.8em;color:var(--error-text);'>(Audio error)</span>`;};c.appendChild(a);el.appendChild(c);hasContent=true;}catch(e){console.error("Err audio:",e);}}
+            if(text){const cont=document.createElement('div');try{const tmp=document.createElement('div');tmp.innerText=text;let fmt=tmp.innerHTML;if(messageData?.mediaType!=='image')fmt=fmt.replace(imageUrlRegex,(m,u)=>`<img src="${u}" class="chat-image" alt="Chat Image" loading="lazy" onerror="this.alt='URL Img error';this.src='';">`);fmt=fmt.replace(/```([\s\S]*?)```/g,(m,c)=>`<pre><code>${c.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code></pre>`).replace(/`([^`]+)`/g,(m,c)=>`<code>${c.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</code>`).replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g,'<em>$1</em>').replace(/\n/g,'<br>');cont.innerHTML=fmt;el.appendChild(cont);hasContent=true;if(text.match(/[$\\\^_]/)){if(typeof MathJax!=="undefined"&&MathJax.typesetPromise){setTimeout(()=>{MathJax.typesetPromise([cont]).catch(e=>console.error('MathJax err:',e));},50);}}}catch(e){console.error("Err text fmt:",e);}}
+            if(messageData?.youtubeVideoId){try{const d=document.createElement('div');d.classList.add('youtube-embed-container');const f=document.createElement('iframe');f.classList.add('chat-video');f.src=`https://www.youtube.com/embed/${messageData.youtubeVideoId}`;f.title="YT player";f.allow="accelerometer;autoplay;clipboard-write;encrypted-media;gyroscope;picture-in-picture;web-share";f.allowFullscreen=true;f.loading="lazy";f.onerror=()=>{d.innerHTML=`<span style='font-size:0.8em;color:var(--error-text);'>(YT error)</span>`;};d.appendChild(f);el.appendChild(d);hasContent=true;}catch(e){console.error("Err YT:",e);}}
+            if(messageData?.role==='model'&&messageData?.mcqData?.length>0){try{displayMCQOffer(messageData.mcqData,messageData.mcqTitle,el);hasContent=true;}catch(e){console.error("Err MCQ offer:",e);}}
+            else if(appendHtml){try{const d=document.createElement('div');d.innerHTML=appendHtml;while(d.firstChild){el.appendChild(d.firstChild);}hasContent=true;}catch(e){console.error("Err append:",e);}}
+            if(hasContent||cssClasses.includes('thinking')){chatArea.appendChild(el);}else{console.warn(`Skip empty msg. Sender:${sender},Text:'${text}',Data:`,messageData);} return el;
         }
 
 
-        // --- MCQ/Test Specific Functions ---
-        // (Removed language toggling)
-         function handleChatAreaClick(event) {
-            const startButton = event.target.closest('.start-test-button');
-            if (startButton) {
-                const mcqDataString = startButton.dataset.mcq; const titleFromButton = startButton.dataset.mcqTitle; let mcqs = null;
-                if (mcqDataString) { try { mcqs = JSON.parse(mcqDataString); } catch (e) { console.error("Failed parse MCQ data from button:", e); displayError("Could not start test. Invalid data."); return; } }
-                if (mcqs?.length > 0) { startMockTest(mcqs, titleFromButton || null); } else { displayError("MCQ data missing or invalid."); } return;
-            }
-            const clickedImage = event.target.closest('img.chat-image, img.uploaded-image');
-            if (clickedImage?.src && !clickedImage.src.startsWith('#') && clickedImage.src.trim() !== '') {
-                try { if (!clickedImage.src.startsWith('data:image') || clickedImage.src.length < 2 * 1024 * 1024) { window.open(clickedImage.src, '_blank'); } else { console.log("Clicked large base64 image in chat."); /* Maybe download instead */ } } catch (e) { console.error("Error opening image source:", e); }
-            }
-        }
-        function displayMCQOffer(mcqData, mcqTitle, aiMessageElement) {
-            if (aiMessageElement.querySelector('.start-test-button')) return;
-            const questionCount = mcqData.length; const button = document.createElement('button'); button.classList.add('start-test-button'); button.textContent = `Start Mock Test (${questionCount} Qs)`; button.title = mcqTitle || `Start generated test`;
-            try { button.dataset.mcq = JSON.stringify(mcqData); if (mcqTitle) { button.dataset.mcqTitle = mcqTitle; } } catch (e) { console.error("Failed stringify MCQ data for button:", e); return; }
-            const buttonContainer = document.createElement('div'); buttonContainer.style.marginTop = '10px'; buttonContainer.appendChild(button); aiMessageElement.appendChild(buttonContainer);
-        }
-        // function toggleTestLanguage() { /* Removed */ }
-        function startMockTest(mcqs, title = null) { if (!currentUser) { displayError("Log in to start test."); return; } if (!mcqs?.length) { displayError("No questions for test."); if (cameFromAllTestsList) { switchView('chat'); } return; } console.log("Starting mock test:", mcqs.length, "Qs. Title:", title); currentTestMCQs = mcqs; currentQuestionIndex = 0; userAnswers = new Array(mcqs.length).fill(null); reviewResultsCache = null; /* currentTestLanguage = 'en'; testLanguageToggle.textContent = 'தமிழ்'; */ switchView('test'); displayTestQuestion(0); startTestTimer(); const finalTitle = (title && title.trim()) ? title.trim() : `Mock Test (${mcqs.length} Qs)`; testTitle.textContent = finalTitle; }
-        function displayTestQuestion(index) {
-             if (index < 0 || index >= currentTestMCQs.length) return; currentQuestionIndex = index; const questionData = currentTestMCQs[index];
-             // const lang = currentTestLanguage; // Removed language switching
-             const questionText = questionData.question?.en || "(Question missing)"; // Use English only
-             testQuestionNumber.textContent = `Question ${index + 1}`; testQuestion.innerHTML = questionText; testOptionsContainer.innerHTML = ''; const options = questionData.options || []; const optionLetters = ['A', 'B', 'C', 'D'];
-             options.forEach((optionObj, optionIndex) => {
-                 if (optionIndex >= optionLetters.length) return;
-                 const optionText = optionObj?.en || '(Option missing)'; // Use English only
-                 const label = document.createElement('label'); const input = document.createElement('input'); input.type = 'radio'; input.name = `q_${index}`; input.value = optionIndex; input.checked = (userAnswers[index] === optionIndex); input.onchange = () => handleOptionSelect(optionIndex); label.appendChild(input); label.appendChild(document.createTextNode(` ${optionLetters[optionIndex]}. ${optionText}`)); testOptionsContainer.appendChild(label);
-             });
-             try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([testQuestion, testOptionsContainer]).catch(err=>console.error('MathJax Test Q Error:', err)); } } catch(e){ console.error("MathJax call failed in test:", e); }
-             prevQuestionBtn.disabled = (index === 0); nextQuestionBtn.disabled = (index === currentTestMCQs.length - 1); questionCounter.textContent = `Q: ${index + 1} / ${currentTestMCQs.length}`;
-        }
-        function handleOptionSelect(optionIndex) { if (currentQuestionIndex >= 0 && currentQuestionIndex < userAnswers.length) { userAnswers[currentQuestionIndex] = optionIndex; console.log(`Answered Q${currentQuestionIndex + 1}: Option ${optionIndex}`); } }
-        function handleTestNavigation(direction) { let newIndex = currentQuestionIndex; if (direction === 'prev' && currentQuestionIndex > 0) { newIndex--; } else if (direction === 'next' && currentQuestionIndex < currentTestMCQs.length - 1) { newIndex++; } if (newIndex !== currentQuestionIndex) { displayTestQuestion(newIndex); } }
-        function startTestTimer() { if (testTimerInterval) clearInterval(testTimerInterval); testStartTime = Date.now(); testTimer.textContent = `Time: 00:00`; testTimerInterval = setInterval(() => { const elapsedSeconds = Math.floor((Date.now() - testStartTime) / 1000); const minutes = Math.floor(elapsedSeconds / 60).toString().padStart(2, '0'); const seconds = (elapsedSeconds % 60).toString().padStart(2, '0'); testTimer.textContent = `Time: ${minutes}:${seconds}`; }, 1000); }
-        function submitTest() { if (!confirm("Submit test?")) return; if (testTimerInterval) clearInterval(testTimerInterval); const endTime = Date.now(); const timeTakenMs = testStartTime ? endTime - testStartTime : 0; const results = calculateResults(currentTestMCQs, userAnswers, timeTakenMs); reviewResultsCache = results; switchView('review', false); displayReview(results); }
+        // --- MCQ/Test Specific Functions --- (English only)
+         function handleChatAreaClick(event) { const startBtn=event.target.closest('.start-test-button'); if(startBtn){const s=startBtn.dataset.mcq;const t=startBtn.dataset.mcqTitle;let m=null;if(s){try{m=JSON.parse(s);}catch(e){console.error("Fail parse MCQ:",e);displayError("Could not start test.");return;}} if(m?.length>0){startMockTest(m,t||null);}else{displayError("MCQ data missing.");} return;} const img=event.target.closest('img.chat-image, img.uploaded-image'); if(img?.src&&!img.src.startsWith('#')&&img.src.trim()!==''){try{if(!img.src.startsWith('data:image')||img.src.length<2*1024*1024){window.open(img.src,'_blank');}else{console.log("Large base64 img.");}}catch(e){console.error("Err open img:",e);}} }
+         function displayMCQOffer(mcqData, mcqTitle, el) { if(el.querySelector('.start-test-button'))return; const n=mcqData.length; const btn=document.createElement('button'); btn.classList.add('start-test-button'); btn.textContent=`Start Mock Test (${n} Qs)`; btn.title=mcqTitle||`Start test`; try{btn.dataset.mcq=JSON.stringify(mcqData);if(mcqTitle){btn.dataset.mcqTitle=mcqTitle;}}catch(e){console.error("Fail stringify MCQ:",e);return;} const cont=document.createElement('div'); cont.style.marginTop='10px'; cont.appendChild(btn); el.appendChild(cont); }
+         function startMockTest(mcqs, title=null) { if(!currentUser){displayError("Log in first.");return;} if(!mcqs?.length){displayError("No questions.");if(cameFromAllTestsList)switchView('chat');return;} console.log("Start test:",mcqs.length,"Qs. Title:",title); currentTestMCQs=mcqs; currentQuestionIndex=0; userAnswers=new Array(mcqs.length).fill(null); reviewResultsCache=null; switchView('test'); displayTestQuestion(0); startTestTimer(); const finalTitle=(title?.trim())?title.trim():`Mock Test (${mcqs.length} Qs)`; testTitle.textContent=finalTitle; }
+         function displayTestQuestion(idx) { if(idx<0||idx>=currentTestMCQs.length)return; currentQuestionIndex=idx; const qData=currentTestMCQs[idx]; const qTxt=qData.question?.en||"(?)"; testQuestionNumber.textContent=`Question ${idx+1}`; testQuestion.innerHTML=qTxt; testOptionsContainer.innerHTML=''; const opts=qData.options||[]; const letters=['A','B','C','D']; opts.forEach((optObj,optIdx)=>{if(optIdx>=letters.length)return; const optTxt=optObj?.en||'(?)'; const lbl=document.createElement('label'); const inp=document.createElement('input'); inp.type='radio'; inp.name=`q_${idx}`; inp.value=optIdx; inp.checked=(userAnswers[idx]===optIdx); inp.onchange=()=>handleOptionSelect(optIdx); lbl.appendChild(inp); lbl.appendChild(document.createTextNode(` ${letters[optIdx]}. ${optTxt}`)); testOptionsContainer.appendChild(lbl);}); try{if(typeof MathJax!=="undefined"&&MathJax.typesetPromise){MathJax.typesetPromise([testQuestion,testOptionsContainer]).catch(e=>console.error('MathJax Test err:',e));}}catch(e){console.error("MathJax test call err:",e);} prevQuestionBtn.disabled=(idx===0); nextQuestionBtn.disabled=(idx===currentTestMCQs.length-1); questionCounter.textContent=`Q: ${idx+1} / ${currentTestMCQs.length}`; }
+         function handleOptionSelect(optIdx) { if(currentQuestionIndex>=0&&currentQuestionIndex<userAnswers.length){userAnswers[currentQuestionIndex]=optIdx; console.log(`Ans Q${currentQuestionIndex+1}: Opt ${optIdx}`);}}
+         function handleTestNavigation(dir) { let newIdx=currentQuestionIndex; if(dir==='prev'&&newIdx>0)newIdx--; else if(dir==='next'&&newIdx<currentTestMCQs.length-1)newIdx++; if(newIdx!==currentQuestionIndex)displayTestQuestion(newIdx); }
+         function startTestTimer() { if(testTimerInterval)clearInterval(testTimerInterval); testStartTime=Date.now(); testTimer.textContent=`Time: 00:00`; testTimerInterval=setInterval(()=>{const elaps=Math.floor((Date.now()-testStartTime)/1000); const min=Math.floor(elaps/60).toString().padStart(2,'0'); const sec=(elaps%60).toString().padStart(2,'0'); testTimer.textContent=`Time: ${min}:${sec}`;},1000); }
+         function submitTest() { if(!confirm("Submit test?"))return; if(testTimerInterval)clearInterval(testTimerInterval); const end=Date.now(); const timeMs=testStartTime?end-testStartTime:0; const results=calculateResults(currentTestMCQs,userAnswers,timeMs); reviewResultsCache=results; switchView('review',false); displayReview(results); }
+         function calculateResults(mcqs, answers, timeMs) { let c=0, i=0, s=0; const rQ=[]; mcqs.forEach((q,idx)=>{const uAIdx=answers[idx];const opts=q.options||[];const cALtr=q.answer?.trim().toUpperCase();const cAIdx=cALtr?cALtr.charCodeAt(0)-'A'.charCodeAt(0):-1; const cATxtE=(cAIdx>=0&&cAIdx<opts.length)?(opts[cAIdx]?.en||'?'):"N/A"; let uATxtE="Skipped"; let st="skipped"; if(uAIdx!==null&&uAIdx>=0&&uAIdx<opts.length){uATxtE=opts[uAIdx]?.en||'?';if(uAIdx===cAIdx){st="correct";c++;}else{st="incorrect";i++;}}else if(uAIdx!==null){uATxtE="Invalid";st="incorrect";i++;}else{s++;} rQ.push({question:q.question?.en||'?',correctAnswer:cATxtE,userAnswer:uATxtE,status:st,explanation:q.explanation?.en||"N/A"});}); const total=mcqs.length; const score=`${c}/${total}`; const timeS=Math.round(timeMs/1000); const mins=Math.floor(timeS/60); const secs=timeS%60; const timeStr=`${mins}m ${secs}s`; return{questions:rQ,summary:{score,correct:c,incorrect:i,skipped:s,timeString:timeStr},testDate:new Date().toISOString(),timeTakenMs:timeMs,sourceChatId:activeChatId,testTitle:testTitle.textContent,originalMCQs:mcqs}; }
+         function displayReview(reviewData) { reviewContent.innerHTML=''; reviewSummary.innerHTML=''; reviewFilters.style.display='none'; if(!reviewData?.questions?.length||!reviewData.summary||!reviewData.originalMCQs){reviewSummary.innerHTML="<span>No review data.</span>"; saveReviewBtn.style.display='none';return;} const{score,correct,incorrect,skipped,timeString}=reviewData.summary; reviewSummary.innerHTML=`<span>Score: ${score}</span> <span class="score-correct">Correct: ${correct}</span> <span class="score-incorrect">Incorrect: ${incorrect}</span> <span class="score-skipped">Skipped: ${skipped}</span> <span>Time: ${timeString}</span>`; reviewTitle.textContent=reviewData.testTitle||"Test Review"; reviewData.questions.forEach((qSum,idx)=>{const origQ=reviewData.originalMCQs[idx]; if(!origQ)return; const qTxt=origQ.question?.en||'?'; const opts=origQ.options||[]; const cALtr=origQ.answer?.trim().toUpperCase(); const cAIdx=cALtr?cALtr.charCodeAt(0)-'A'.charCodeAt(0):-1; const cATxt=(cAIdx>=0&&cAIdx<opts.length)?(opts[cAIdx]?.en):"N/A"; let uATxt=qSum.userAnswer; const st=qSum.status; if(st==='skipped')uATxt="Skipped"; else if(st==='invalid')uATxt="Invalid"; const explTxt=origQ.explanation?.en||"N/A."; let iStCls=`status-${st}`; let aDtCls=`user-answer-${st}`; const rItem=document.createElement('div'); rItem.classList.add('review-item',iStCls); rItem.dataset.status=st; let dHtml=`<span class="${aDtCls}">Your Answer: ${uATxt}</span>`; if(st!=='correct'){dHtml+=`<br><span class="correct-answer">Correct Answer: ${cATxt}</span>`;} dHtml+=`<div class="review-item-explanation">Explanation: ${explTxt}</div>`; rItem.innerHTML=`<div class="review-item-qnum">Q ${idx+1}</div> <div class="review-item-question">${qTxt}</div> <div class="review-item-details">${dHtml}</div>`; reviewContent.appendChild(rItem);}); if(incorrect>0||skipped>0)reviewFilters.style.display='block'; else reviewFilters.style.display='none'; if(reviewData.savedAt){saveReviewBtn.textContent="Saved";saveReviewBtn.disabled=true;saveReviewBtn.style.display='inline-block';}else if(reviewResultsCache&&!cameFromAllTestsList){saveReviewBtn.textContent="Save Review";saveReviewBtn.disabled=!currentUser;saveReviewBtn.style.display='inline-block';}else{saveReviewBtn.style.display='none';} filterReviewItems('all'); reviewFilters.querySelectorAll('button').forEach(b=>{b.classList.toggle('active-filter',b.dataset.filter==='all');}); try{if(typeof MathJax!=="undefined"&&MathJax.typesetPromise){MathJax.typesetPromise([reviewContent]).catch(e=>console.error('MathJax Rev err:',e));}}catch(e){console.error("MathJax rev call err:",e);} }
+         function handleReviewFilterClick(event) { const btn=event.target.closest('button[data-filter]'); if(btn)filterReviewItems(btn.dataset.filter); }
+         function filterReviewItems(filter) { reviewFilters.querySelectorAll('button').forEach(b=>{b.classList.toggle('active-filter',b.dataset.filter===filter);}); reviewContent.querySelectorAll('.review-item').forEach(i=>{const show=(filter==='all')||i.dataset.status===filter; i.classList.toggle('hidden-by-filter',!show);}); }
+         function exitReview() { reviewResultsCache=null; switchView('chat'); reviewSummary.innerHTML=''; reviewContent.innerHTML=''; reviewTitle.textContent='Review'; }
+         async function saveTestReviewToCloud() { if(!currentUser){alert("Log in to save.");return;} if(!reviewResultsCache||reviewResultsCache.savedAt){alert("No new data or already saved.");return;} if(!reviewResultsCache.originalMCQs?.length||!reviewResultsCache.summary){if(!confirm("Incomplete data. Save anyway?"))return;} const data={...reviewResultsCache,userId:currentUser.uid,savedAt:firebase.firestore.FieldValue.serverTimestamp()}; saveReviewBtn.disabled=true; saveReviewBtn.textContent="Saving..."; try{const ref=await db.collection('testReviews').add(data); console.log("Review saved:",ref.id); alert("Review saved!"); saveReviewBtn.textContent="Saved"; if(reviewResultsCache)reviewResultsCache.savedAt=new Date();}catch(e){console.error("Save review err:",e); alert("Failed save review."); saveReviewBtn.disabled=false; saveReviewBtn.textContent="Save Review";} }
 
-        // --- Review Functions ---
-        // (Removed language toggling)
-        // function toggleReviewLanguage() { /* Removed */ }
-        function calculateResults(mcqs, answers, timeMs) { // Assumes English only in mcqs data structure now
-            let correctCount = 0, incorrectCount = 0, skippedCount = 0; const reviewQuestions = [];
-            mcqs.forEach((q, idx) => {
-                const uAIdx = answers[idx]; const opts = q.options || []; const cALtr = q.answer?.trim().toUpperCase(); const cAIdx = cALtr ? cALtr.charCodeAt(0) - 'A'.charCodeAt(0) : -1;
-                const cATxtE = (cAIdx >= 0 && cAIdx < opts.length) ? (opts[cAIdx]?.en || '?') : "N/A";
-                let uATxtE = "Skipped"; let st = "skipped";
-                if (uAIdx !== null && uAIdx >= 0 && uAIdx < opts.length) { uATxtE = opts[uAIdx]?.en || '?'; if (uAIdx === cAIdx) { st = "correct"; correctCount++; } else { st = "incorrect"; incorrectCount++; } }
-                else if (uAIdx !== null) { uATxtE = "Invalid"; st = "incorrect"; incorrectCount++; }
-                else { skippedCount++; }
-                reviewQuestions.push({ question: q.question?.en || '?', correctAnswer: cATxtE, userAnswer: uATxtE, status: st, explanation: q.explanation?.en || "N/A" });
-            });
-            const total = mcqs.length; const score = `${correctCount}/${total}`; const timeS = Math.round(timeMs / 1000); const mins = Math.floor(timeS / 60); const secs = timeS % 60; const timeStr = `${mins}m ${secs}s`;
-            return { questions: reviewQuestions, summary: { score, correct: correctCount, incorrect: incorrectCount, skipped: skippedCount, timeString: timeStr }, testDate: new Date().toISOString(), timeTakenMs: timeMs, sourceChatId: activeChatId, testTitle: testTitle.textContent, originalMCQs: mcqs };
-        }
-        function displayReview(reviewData) { // Displays English only
-            reviewContent.innerHTML = ''; reviewSummary.innerHTML = ''; reviewFilters.style.display = 'none';
-            if (!reviewData?.questions?.length || !reviewData.summary || !reviewData.originalMCQs) { reviewSummary.innerHTML = "<span>No review data available.</span>"; saveReviewBtn.style.display = 'none'; return; }
-            const { score, correct, incorrect, skipped, timeString } = reviewData.summary;
-            reviewSummary.innerHTML = `<span>Score: ${score}</span> <span class="score-correct">Correct: ${correct}</span> <span class="score-incorrect">Incorrect: ${incorrect}</span> <span class="score-skipped">Skipped: ${skipped}</span> <span>Time: ${timeString}</span>`;
-            reviewTitle.textContent = reviewData.testTitle || "Test Review";
-            // const lang = currentReviewLanguage; // Removed
-            reviewData.questions.forEach((qSum, idx) => {
-                const origQ = reviewData.originalMCQs[idx]; if (!origQ) return;
-                const qTxt = origQ.question?.en || '?'; // English only
-                const opts = origQ.options || []; const cALtr = origQ.answer?.trim().toUpperCase(); const cAIdx = cALtr ? cALtr.charCodeAt(0) - 'A'.charCodeAt(0) : -1;
-                const cATxt = (cAIdx >= 0 && cAIdx < opts.length) ? (opts[cAIdx]?.en) : "N/A"; // English only
-                let uATxt = qSum.userAnswer; // Already English from calculateResults
-                const st = qSum.status;
-                if (st === 'skipped') uATxt = "Skipped";
-                else if (st === 'invalid') uATxt = "Invalid";
-                const explTxt = origQ.explanation?.en || "N/A."; // English only
-                let iStCls = `status-${st}`; let aDtCls = `user-answer-${st}`;
-                const rItem = document.createElement('div'); rItem.classList.add('review-item', iStCls); rItem.dataset.status = st;
-                let dHtml = `<span class="${aDtCls}">Your Answer: ${uATxt}</span>`;
-                if (st !== 'correct') { dHtml += `<br><span class="correct-answer">Correct Answer: ${cATxt}</span>`; }
-                dHtml += `<div class="review-item-explanation">Explanation: ${explTxt}</div>`;
-                rItem.innerHTML = `<div class="review-item-qnum">Q ${idx + 1}</div> <div class="review-item-question">${qTxt}</div> <div class="review-item-details">${dHtml}</div>`;
-                reviewContent.appendChild(rItem);
-            });
-            if (incorrect > 0 || skipped > 0) reviewFilters.style.display = 'block'; else reviewFilters.style.display = 'none';
-            if (reviewData.savedAt) { saveReviewBtn.textContent = "Saved"; saveReviewBtn.disabled = true; saveReviewBtn.style.display = 'inline-block'; }
-            else if (reviewResultsCache && !cameFromAllTestsList) { saveReviewBtn.textContent = "Save Review"; saveReviewBtn.disabled = !currentUser; saveReviewBtn.style.display = 'inline-block'; }
-            else { saveReviewBtn.style.display = 'none'; }
-            filterReviewItems('all'); reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === 'all'); });
-            try { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { MathJax.typesetPromise([reviewContent]).catch(err=>console.error('MathJax Review Error:', err)); } } catch (e) { console.error("MathJax call failed in review:", e); }
-        }
-        function handleReviewFilterClick(event) { const button = event.target.closest('button[data-filter]'); if (button) { filterReviewItems(button.dataset.filter); } }
-        function filterReviewItems(filter) { reviewFilters.querySelectorAll('button').forEach(btn => { btn.classList.toggle('active-filter', btn.dataset.filter === filter); }); reviewContent.querySelectorAll('.review-item').forEach(item => { const show = (filter === 'all') || item.dataset.status === filter; item.classList.toggle('hidden-by-filter', !show); }); }
-        function exitReview() { reviewResultsCache = null; switchView('chat'); reviewSummary.innerHTML = ''; reviewContent.innerHTML = ''; reviewTitle.textContent = 'Review'; /* Reset language toggle removed */ }
-        async function saveTestReviewToCloud() { if (!currentUser) { alert("Please log in to save the review."); return; } if (!reviewResultsCache || reviewResultsCache.savedAt) { alert("No new review data to save or already saved."); return; } if (!reviewResultsCache.originalMCQs?.length || !reviewResultsCache.summary) { if (!confirm("Warning: Review data seems incomplete. Save anyway?")) { return; } } const dataToSave = { ...reviewResultsCache, userId: currentUser.uid, savedAt: firebase.firestore.FieldValue.serverTimestamp(), }; saveReviewBtn.disabled = true; saveReviewBtn.textContent = "Saving..."; try { const newRef = await db.collection('testReviews').add(dataToSave); console.log("Review saved:", newRef.id); alert("Review saved!"); saveReviewBtn.textContent = "Saved"; if (reviewResultsCache) reviewResultsCache.savedAt = new Date(); } catch (error) { console.error("Error saving review:", error); alert("Failed to save review."); saveReviewBtn.disabled = false; saveReviewBtn.textContent = "Save Review"; } }
-
-
-        // --- All Tests List Functions ---
-        // (Removed language context)
-        function loadAndListenForTests(userId) { if (testListListener) { testListListener(); testListListener = null; } const testsRef = db.collection('testReviews').where('userId', '==', userId).orderBy('savedAt', 'desc'); console.log(`Listening for saved tests for user ${userId}`); testListListener = testsRef.onSnapshot(snapshot => { allSavedTestsData = []; snapshot.forEach(doc => { allSavedTestsData.push({ id: doc.id, ...doc.data() }); }); console.log("Received saved tests snapshot:", allSavedTestsData.length, "tests"); renderAllTestsList(allSavedTestsData); filterTestsInSidebar(); }, error => { console.error("Error listening for saved tests:", error); allTestsListContainer.innerHTML = `<div style="padding:10px; color:var(--error-text);">Error loading saved tests.</div>`; allSavedTestsData = []; }); }
-        function renderAllTestsList(tests) { allTestsListContainer.innerHTML = ''; if (!currentUser) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Login to see tests.</div>'; return; } if (tests.length === 0) { allTestsListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No saved tests found.</div>'; } else { tests.forEach(testData => { const item = document.createElement('div'); item.classList.add('test-list-item'); item.dataset.reviewId = testData.id; const title = testData.testTitle || '(Untitled Test)'; const date = testData.savedAt?.toDate ? testData.savedAt.toDate().toLocaleString() : 'Unknown date'; const score = testData.summary?.score || 'N/A'; const hasReattemptData = testData.originalMCQs?.length > 0 && testData.originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); const infoDiv = document.createElement('div'); infoDiv.classList.add('test-item-info'); const titleSpan = document.createElement('span'); titleSpan.classList.add('test-item-title'); titleSpan.textContent = title; titleSpan.title = title; const detailSpan = document.createElement('span'); detailSpan.classList.add('test-item-details'); detailSpan.textContent = `Saved: ${date} | Score: ${score}`; const controlsDiv = document.createElement('div'); controlsDiv.classList.add('test-item-controls'); const editButton = document.createElement('button'); editButton.innerHTML = EDIT_TEST_ICON; editButton.title = "Edit title"; editButton.dataset.action = "edit-title"; controlsDiv.appendChild(editButton); const deleteButton = document.createElement('button'); deleteButton.innerHTML = DELETE_TEST_ICON; deleteButton.title = "Delete test"; deleteButton.dataset.action = "delete-test"; controlsDiv.appendChild(deleteButton); infoDiv.appendChild(titleSpan); infoDiv.appendChild(detailSpan); infoDiv.appendChild(controlsDiv); const actionsDiv = document.createElement('div'); actionsDiv.classList.add('test-item-actions'); const viewButton = document.createElement('button'); viewButton.textContent = "Details"; viewButton.dataset.action = "view"; actionsDiv.appendChild(viewButton); const reattemptSelect = document.createElement('select'); reattemptSelect.dataset.action = "reattempt"; reattemptSelect.disabled = !hasReattemptData; reattemptSelect.title = hasReattemptData ? "Reattempt test" : "Reattempt data not available"; reattemptSelect.innerHTML = `<option value="" selected>${hasReattemptData ? 'Reattempt...' : 'N/A'}</option> <option value="mistaked" ${!hasReattemptData?'disabled':''}>Mistaked Only</option> <option value="skipped" ${!hasReattemptData?'disabled':''}>Skipped Only</option> <option value="both" ${!hasReattemptData?'disabled':''}>Mistaked/Skipped</option> <option value="full" ${!hasReattemptData?'disabled':''}>Full Test</option>`; reattemptSelect.addEventListener('change', (e) => { const selectedMode = e.target.value; if (selectedMode) { const reviewId = e.target.closest('.test-list-item')?.dataset.reviewId; if (reviewId) { startReattempt(reviewId, selectedMode); } e.target.value = ""; } }); actionsDiv.appendChild(reattemptSelect); item.appendChild(infoDiv); item.appendChild(actionsDiv); allTestsListContainer.appendChild(item); }); } }
-        function filterTestsInSidebar() { const searchTerm = testSearchInput.value.toLowerCase().trim(); const items = allTestsListContainer.querySelectorAll('.test-list-item'); let visibleCount = 0; const noResultsMsg = allTestsListContainer.querySelector('.no-search-results'); if (noResultsMsg) { noResultsMsg.remove(); } items.forEach(item => { const title = item.querySelector('.test-item-title')?.textContent.toLowerCase() || ''; const details = item.querySelector('.test-item-details')?.textContent.toLowerCase() || ''; const isMatch = title.includes(searchTerm) || details.includes(searchTerm); item.classList.toggle('hidden-by-search', !isMatch); if (isMatch) visibleCount++; }); if (visibleCount === 0 && searchTerm !== '' && items.length > 0) { const msgDiv = document.createElement('div'); msgDiv.textContent = "No saved tests match your search."; msgDiv.classList.add('no-search-results'); allTestsListContainer.appendChild(msgDiv); } }
-        async function handleAllTestsListClick(event) { const button = event.target.closest('button[data-action]'); if (!button) return; const action = button.dataset.action; const listItem = button.closest('.test-list-item'); const reviewId = listItem?.dataset.reviewId; if (!reviewId) { console.error("Could not find review ID for action:", action); return; } switch (action) { case "view": const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (reviewData) { reviewResultsCache = reviewData; switchView('review', true); displayReview(reviewData); } else { alert("Error: Could not find review data to display."); } break; case "edit-title": enterTestTitleEditMode(listItem, reviewId); break; case "delete-test": const testTitle = listItem.querySelector('.test-item-title')?.textContent || 'this test'; if (confirm(`Are you sure you want to delete the test "${testTitle}"?`)) { deleteSavedTest(reviewId, listItem); } break; } }
-        function enterTestTitleEditMode(listItem, reviewId) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const currentTitle = titleSpan.textContent; titleSpan.style.display = 'none'; detailSpan.style.display = 'none'; if(controlsDiv) controlsDiv.style.display = 'none'; if (infoDiv.querySelector('.test-item-edit-mode')) return; const editContainer = document.createElement('div'); editContainer.classList.add('test-item-edit-mode'); const input = document.createElement('input'); input.type = 'text'; input.value = currentTitle; input.maxLength = 100; input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { saveTestTitle(listItem, reviewId, input.value); } else if (e.key === 'Escape') { exitTestTitleEditMode(listItem, currentTitle); } }); const saveButton = document.createElement('button'); saveButton.textContent = 'Save'; saveButton.onclick = () => saveTestTitle(listItem, reviewId, input.value); const cancelButton = document.createElement('button'); cancelButton.textContent = 'Cancel'; cancelButton.onclick = () => exitTestTitleEditMode(listItem, currentTitle); editContainer.appendChild(input); editContainer.appendChild(saveButton); editContainer.appendChild(cancelButton); infoDiv.appendChild(editContainer); input.focus(); input.select(); }
-        function exitTestTitleEditMode(listItem, originalTitle = null) { const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const editContainer = infoDiv.querySelector('.test-item-edit-mode'); if (editContainer) editContainer.remove(); if (originalTitle !== null && titleSpan) { titleSpan.textContent = originalTitle; titleSpan.title = originalTitle; } if(titleSpan) titleSpan.style.display = ''; if(detailSpan) detailSpan.style.display = ''; if(cD) cD.style.display = ''; }
-        async function saveTestTitle(listItem, reviewId, newTitle) { const trimmedTitle = newTitle.trim(); if (!trimmedTitle) { alert("Test title cannot be empty."); return; } if (trimmedTitle.length > 100) { alert("Test title is too long (max 100 characters)."); return; } const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.update({ testTitle: trimmedTitle }); console.log("Test title updated successfully:", reviewId); const titleSpan = listItem.querySelector('.test-item-title'); if (titleSpan) { titleSpan.textContent = trimmedTitle; titleSpan.title = trimmedTitle; } const testIndex = allSavedTestsData.findIndex(t => t.id === reviewId); if (testIndex > -1) allSavedTestsData[testIndex].testTitle = trimmedTitle; exitTestTitleEditMode(listItem); } catch (error) { console.error("Error updating test title:", error); alert("Failed to update test title."); } }
-        async function deleteSavedTest(reviewId, listItem) { if (!currentUser || !reviewId) return; listItem.style.opacity = '0.5'; listItem.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.delete(); console.log("Saved test deleted successfully:", reviewId); allSavedTestsData = allSavedTestsData.filter(t => t.id !== reviewId); alert("Saved test deleted."); } catch (error) { console.error("Error deleting saved test:", error); alert("Failed to delete saved test."); listItem.style.opacity = '1'; listItem.style.pointerEvents = 'auto'; } }
-        async function startReattempt(reviewId, mode) { console.log(`Attempting reattempt for review ID: ${reviewId}, Mode: ${mode}`); const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (!reviewData) { alert("Error: Could not find the saved review data for reattempt."); return; } const originalMCQs = reviewData.originalMCQs; const hasValidData = originalMCQs?.length > 0 && originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); if (!hasValidData) { alert("Error: Cannot reattempt. Original test data is missing or invalid."); return; } const summaryQuestions = reviewData.questions || []; let questionsForReattempt = []; switch (mode) { case 'mistaked': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect'); break; case 'skipped': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'skipped'); break; case 'both': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect' || summaryQuestions[index]?.status === 'skipped'); break; case 'full': default: questionsForReattempt = [...originalMCQs]; break; } if (questionsForReattempt.length === 0) { alert(`No questions found for the selected reattempt mode ('${mode}').`); return; } const originalTitle = reviewData.testTitle || 'Test'; const reattemptTitle = `${originalTitle} (Reattempt: ${mode})`; startMockTest(questionsForReattempt, reattemptTitle); }
+        // --- All Tests List Functions --- (No changes)
+        function loadAndListenForTests(userId) { if (testListListener) { testListListener(); testListListener = null; } const testsRef = db.collection('testReviews').where('userId', '==', userId).orderBy('savedAt', 'desc'); console.log(`Listening tests for ${userId}`); testListListener = testsRef.onSnapshot(snap => { allSavedTestsData = []; snap.forEach(doc => { allSavedTestsData.push({ id: doc.id, ...doc.data() }); }); console.log("Tests snapshot:", allSavedTestsData.length); renderAllTestsList(allSavedTestsData); filterTestsInSidebar(); }, err => { console.error("Listen tests err:", err); allTestsListContainer.innerHTML = `<div style="color:var(--error-text);">Error loading tests.</div>`; allSavedTestsData = []; }); }
+        function renderAllTestsList(tests) { allTestsListContainer.innerHTML = ''; if (!currentUser) { allTestsListContainer.innerHTML = '<div>Login first.</div>'; return; } if (tests.length === 0) { allTestsListContainer.innerHTML = '<div>No saved tests.</div>'; } else { tests.forEach(testData => { const item = document.createElement('div'); item.classList.add('test-list-item'); item.dataset.reviewId = testData.id; const title = testData.testTitle || '(Untitled)'; const date = testData.savedAt?.toDate ? testData.savedAt.toDate().toLocaleString() : '?'; const score = testData.summary?.score || 'N/A'; const hasRe = testData.originalMCQs?.length > 0 && testData.originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); const info = document.createElement('div'); info.classList.add('test-item-info'); const tS = document.createElement('span'); tS.classList.add('test-item-title'); tS.textContent = title; tS.title = title; const dS = document.createElement('span'); dS.classList.add('test-item-details'); dS.textContent = `Saved: ${date} | Score: ${score}`; const ctrls = document.createElement('div'); ctrls.classList.add('test-item-controls'); const edB = document.createElement('button'); edB.innerHTML = EDIT_TEST_ICON; edB.title = "Edit title"; edB.dataset.action = "edit-title"; ctrls.appendChild(edB); const delB = document.createElement('button'); delB.innerHTML = DELETE_TEST_ICON; delB.title = "Delete test"; delB.dataset.action = "delete-test"; ctrls.appendChild(delB); info.appendChild(tS); info.appendChild(dS); info.appendChild(ctrls); const acts = document.createElement('div'); acts.classList.add('test-item-actions'); const vB = document.createElement('button'); vB.textContent = "Details"; vB.dataset.action = "view"; acts.appendChild(vB); const rSel = document.createElement('select'); rSel.dataset.action = "reattempt"; rSel.disabled = !hasRe; rSel.title = hasRe ? "Reattempt" : "N/A"; rSel.innerHTML = `<option value="" selected>${hasRe?'Reattempt...':'N/A'}</option><option value="mistaked" ${!hasRe?'disabled':''}>Mistaked</option><option value="skipped" ${!hasRe?'disabled':''}>Skipped</option><option value="both" ${!hasRe?'disabled':''}>Mistaked/Skipped</option><option value="full" ${!hasRe?'disabled':''}>Full</option>`; rSel.addEventListener('change', (e) => { const mode = e.target.value; if (mode) { const rId = e.target.closest('.test-list-item')?.dataset.reviewId; if (rId) startReattempt(rId, mode); e.target.value = ""; } }); acts.appendChild(rSel); item.appendChild(info); item.appendChild(acts); allTestsListContainer.appendChild(item); }); } }
+        function filterTestsInSidebar() { const term = testSearchInput.value.toLowerCase().trim(); const items = allTestsListContainer.querySelectorAll('.test-list-item'); let vis = 0; const noRes = allTestsListContainer.querySelector('.no-search-results'); if (noRes) noRes.remove(); items.forEach(item => { const title = item.querySelector('.test-item-title')?.textContent.toLowerCase() || ''; const details = item.querySelector('.test-item-details')?.textContent.toLowerCase() || ''; const match = title.includes(term) || details.includes(term); item.classList.toggle('hidden-by-search', !match); if (match) vis++; }); if (vis === 0 && term !== '' && items.length > 0) { const msg = document.createElement('div'); msg.textContent = "No tests match."; msg.classList.add('no-search-results'); allTestsListContainer.appendChild(msg); } }
+        async function handleAllTestsListClick(event) { const btn = event.target.closest('button[data-action]'); if (!btn) return; const act = btn.dataset.action; const item = btn.closest('.test-list-item'); const id = item?.dataset.reviewId; if (!id) return; switch (act) { case "view": const data = allSavedTestsData.find(t => t.id === id); if (data) { reviewResultsCache = data; switchView('review', true); displayReview(data); } else alert("Error loading."); break; case "edit-title": enterTestTitleEditMode(item, id); break; case "delete-test": const title = item.querySelector('.test-item-title')?.textContent || 'test'; if (confirm(`Delete "${title}"?`)) deleteSavedTest(id, item); break; } }
+        function enterTestTitleEditMode(item, id) { const info = item.querySelector('.test-item-info'); const tS = info.querySelector('.test-item-title'); const dS = info.querySelector('.test-item-details'); const cD = info.querySelector('.test-item-controls'); const curT = tS.textContent; tS.style.display = 'none'; dS.style.display = 'none'; if(cD) cD.style.display = 'none'; if (info.querySelector('.test-item-edit-mode')) return; const editC = document.createElement('div'); editC.classList.add('test-item-edit-mode'); const inp = document.createElement('input'); inp.type = 'text'; inp.value = curT; inp.maxLength = 100; inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') saveTestTitle(item, id, inp.value); else if (e.key === 'Escape') exitTestTitleEditMode(item, curT); }); const saveB = document.createElement('button'); saveB.textContent = 'Save'; saveB.onclick = () => saveTestTitle(item, id, inp.value); const cancelB = document.createElement('button'); cancelB.textContent = 'Cancel'; cancelB.onclick = () => exitTestTitleEditMode(item, curT); editC.appendChild(inp); editC.appendChild(saveB); editC.appendChild(cancelB); info.appendChild(editC); inp.focus(); inp.select(); }
+        function exitTestTitleEditMode(item, origTitle = null) { const info = item.querySelector('.test-item-info'); const tS = info.querySelector('.test-item-title'); const dS = info.querySelector('.test-item-details'); const cD = info.querySelector('.test-item-controls'); const editC = info.querySelector('.test-item-edit-mode'); if (editC) editC.remove(); if (origTitle !== null && tS) { tS.textContent = origTitle; tS.title = origTitle; } if(tS) tS.style.display = ''; if(dS) dS.style.display = ''; if(cD) cD.style.display = ''; }
+        async function saveTestTitle(item, id, newTitle) { const trimT = newTitle.trim(); if (!trimT) { alert("Title empty."); return; } if (trimT.length > 100) { alert("Title too long."); return; } const docRef = db.collection('testReviews').doc(id); try { await docRef.update({ testTitle: trimT }); console.log("Title updated:", id); const tS = item.querySelector('.test-item-title'); if (tS) { tS.textContent = trimT; tS.title = trimT; } const idx = allSavedTestsData.findIndex(t => t.id === id); if (idx > -1) allSavedTestsData[idx].testTitle = trimT; exitTestTitleEditMode(item); } catch (e) { console.error("Update title err:", e); alert("Failed update title."); } }
+        async function deleteSavedTest(id, item) { if (!currentUser || !id) return; item.style.opacity = '0.5'; item.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(id); try { await docRef.delete(); console.log("Test deleted:", id); allSavedTestsData = allSavedTestsData.filter(t => t.id !== id); alert("Test deleted."); } catch (e) { console.error("Delete test err:", e); alert("Failed delete test."); item.style.opacity = '1'; item.style.pointerEvents = 'auto'; } }
+        async function startReattempt(id, mode) { console.log(`Reattempt: ${id}, mode: ${mode}`); const data = allSavedTestsData.find(t => t.id === id); if (!data) { alert("Review data not found."); return; } const origQs = data.originalMCQs; const valid = origQs?.length > 0 && origQs.every(q => q?.question && q.options && q.answer && q.explanation); if (!valid) { alert("Reattempt data missing/invalid."); return; } const sumQs = data.questions || []; let qsRe = []; switch (mode) { case 'mistaked': qsRe = origQs.filter((mcq, i) => sumQs[i]?.status === 'incorrect'); break; case 'skipped': qsRe = origQs.filter((mcq, i) => sumQs[i]?.status === 'skipped'); break; case 'both': qsRe = origQs.filter((mcq, i) => sumQs[i]?.status === 'incorrect' || sumQs[i]?.status === 'skipped'); break; case 'full': default: qsRe = [...origQs]; break; } if (qsRe.length === 0) { alert(`No questions for mode '${mode}'.`); return; } const title = `${data.testTitle || 'Test'} (Reattempt: ${mode})`; startMockTest(qsRe, title); }
 
     </script>
 
