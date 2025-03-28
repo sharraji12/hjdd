@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- Version Updated -->
-    <title>Gemini Chat + Mock Test (v9.9 - File API Fix)</title>
+    <title>Gemini Chat + Mock Test (v9.9 - PDF Upload Fix)</title> <!-- Changed Title -->
     <script>
         // MathJax Configuration
         window.MathJax = {
@@ -25,16 +25,18 @@
     <script type="module">
         // Make SDK accessible globally after import
         try {
-            // *** Using await import for clarity ***
+            // Use await import for better control if needed, though direct import usually works
             const { GoogleGenerativeAI } = await import("https://esm.run/@google/generative-ai");
             window.GoogleGenerativeAI = GoogleGenerativeAI;
             console.log("GoogleGenerativeAI SDK loaded successfully via module.");
-            // Optionally trigger an event or set a flag if needed by non-module script
+            // Dispatch event to notify non-module script that SDK is loaded
             window.dispatchEvent(new Event('google-ai-sdk-loaded'));
         } catch (error) {
             console.error("Failed to load GoogleGenerativeAI SDK:", error);
-            // Display error to user?
-            window.googleAiSdkLoadError = error; // Store error globally if needed
+            // Store error globally for potential debugging in non-module script
+            window.googleAiSdkLoadError = error;
+            // Dispatch a failure event if needed
+             window.dispatchEvent(new Event('google-ai-sdk-load-failed'));
         }
     </script>
 
@@ -193,8 +195,6 @@
         .test-header h2 { margin: 0; font-size: 1.3em; color: var(--text-primary); }
         .test-info { display: flex; align-items: center; }
         .test-info span { margin-left: 15px; font-size: 0.95em; color: var(--text-secondary); }
-        #test-language-toggle, #review-language-toggle { margin-left: 15px; padding: 3px 8px; font-size: 0.8em; cursor: pointer; background-color: var(--button-bg); border: 1px solid var(--border-color); color: var(--text-secondary); border-radius: 4px; transition: background-color 0.2s ease, color 0.2s ease; }
-        #test-language-toggle:hover, #review-language-toggle:hover { background-color: var(--button-hover-bg); color: var(--text-primary); }
         .test-content { flex-grow: 1; overflow-y: auto; padding: 10px 20px; }
         .test-question-container { margin-bottom: 25px; }
         .test-question-number { font-weight: bold; margin-bottom: 8px; color: var(--text-secondary); }
@@ -260,7 +260,6 @@
             .test-header h2, .review-header h2 { font-size: 1.1em; margin-bottom: 5px;}
             .test-info, .review-summary { margin-bottom: 5px; }
             .test-info span, .review-summary span { margin-left: 0; margin-right: 10px; font-size: 0.9em; display: inline-block; margin-bottom: 3px;}
-            #test-language-toggle, #review-language-toggle { margin-left: 0; margin-top: 5px; font-size: 0.75em;}
             .test-content, .review-content { padding: 5px; }
             .test-question, .review-item-question { font-size: 1em; }
             .test-options label, .review-item { padding: 10px; font-size: 0.95em;}
@@ -281,7 +280,7 @@
                  <div class="sidebar-section-title">All Tests</div>
                  <input type="search" id="test-search-input" placeholder="Search tests..." disabled>
                  <div class="all-tests-list" id="all-tests-list">
-                      <div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Login to see saved tests.</div>
+                      <!-- Saved tests load here -->
                  </div>
              </div>
              <div class="sidebar-section">
@@ -290,7 +289,7 @@
                  </button>
                  <div class="sidebar-section-title">Chats</div>
                  <div class="chat-list" id="chat-list">
-                      <div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">Please log in to see chats.</div>
+                      <!-- Chat list loads here -->
                  </div>
              </div>
              <div class="sidebar-footer">
@@ -312,7 +311,7 @@
         <div class="main-container">
             <div class="main-content active" id="main-content-chat">
                  <div class="chat-area" id="chat-area">
-                     <!-- Greeting or Login Prompt -->
+                     <!-- Chat messages load here -->
                  </div>
                  <div class="input-container" id="input-container">
                      <div class="suggestions" id="suggestions">
@@ -344,7 +343,7 @@
                              <button id="audio-upload-button" title="Upload audio file" disabled>🎵</button>
                              <button id="record-audio-button" title="Record audio" disabled>🎙️</button>
                          </div>
-                         <textarea id="user-input" placeholder="Enter prompt, attach media, or paste URL" rows="1" disabled></textarea>
+                         <textarea id="user-input" placeholder="Initializing..." rows="1" disabled></textarea>
                          <div class="mcq-mode-control"> <input type="checkbox" id="mcq-mode-checkbox" title="Generate MCQs based on prompt/media" disabled> <label for="mcq-mode-checkbox">MCQs?</label> </div>
                          <button id="send-button" title="Send message" disabled> <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
                         </button>
@@ -475,8 +474,8 @@
         const MAX_IMAGE_SIZE_MB = 4;
         const MAX_TOTAL_IMAGE_SIZE_MB = 16;
         const MAX_IMAGE_COUNT = 5;
-        const MAX_PDF_SIZE_MB = 50;
-        const MAX_PDF_COUNT = 5;
+        const MAX_PDF_SIZE_MB = 50; // Client-side check; API has its own limits (2GB via File API)
+        const MAX_PDF_COUNT = 5; // UI Limit
         const MAX_AUDIO_SIZE_MB = 10;
         const SUPPORTED_AUDIO_MIMES = ['audio/wav', 'audio/mp3', 'audio/mpeg', 'audio/aiff', 'audio/aac', 'audio/ogg', 'audio/flac'];
         const RECORDING_TIME_LIMIT_SECONDS = 300; // 5 minutes
@@ -514,6 +513,7 @@
         let recorderStream = null;
         // Flag for SDK loading state
         let isAISdkReady = false;
+        let sdkLoadAttempted = false; // Flag to prevent multiple init attempts
 
         // --- Initialization ---
         initializeApp();
@@ -540,51 +540,66 @@
         loginBtn.addEventListener('click', signInWithGoogle);
         logoutBtn.addEventListener('click', signOut);
         // Media Listeners
-        imageUploadButton.addEventListener('click', () => {
-            if (!imageUploadButton.disabled) imageUploadInput.click();
-        });
+        imageUploadButton.addEventListener('click', () => { if (!imageUploadButton.disabled) imageUploadInput.click(); });
         imageUploadInput.addEventListener('change', handleImageFileSelect);
-        pdfUploadButton.addEventListener('click', () => {
-            if (!pdfUploadButton.disabled) pdfUploadInput.click();
-        });
+        pdfUploadButton.addEventListener('click', () => { if (!pdfUploadButton.disabled) pdfUploadInput.click(); });
         pdfUploadInput.addEventListener('change', handlePdfFileSelect);
-        audioUploadButton.addEventListener('click', () => {
-            if (!audioUploadButton.disabled) audioUploadInput.click();
-        });
+        audioUploadButton.addEventListener('click', () => { if (!audioUploadButton.disabled) audioUploadInput.click(); });
         audioUploadInput.addEventListener('change', handleAudioFileSelect);
-        recordAudioButton.addEventListener('click', () => {
-             if (!recordAudioButton.disabled || isRecording) {
-                toggleRecording();
-             }
-        });
+        recordAudioButton.addEventListener('click', () => { if (!recordAudioButton.disabled || isRecording) toggleRecording(); });
         removeMediaButton.addEventListener('click', removeAllSelectedMedia);
 
         // Listen for SDK loaded event (set by module script)
         window.addEventListener('google-ai-sdk-loaded', () => {
-            console.log("Caught 'google-ai-sdk-loaded' event.");
+            console.log("Event: 'google-ai-sdk-loaded' received.");
             isAISdkReady = true;
+            sdkLoadAttempted = true; // Mark that SDK loading finished (successfully)
             // If API key is already loaded, try initializing genAI now
             if (API_KEY && !genAI) {
                  initializeGenAIInstance();
-                 // Re-evaluate button states if user is logged in
-                 if(currentUser) updateButtonStates();
+                 // No need to call updateButtonStates here, initializeGenAIInstance does it
+            } else {
+                 updateButtonStates(); // Update buttons based on SDK ready state
             }
+        });
+        // Listen for SDK load failure event
+        window.addEventListener('google-ai-sdk-load-failed', () => {
+            console.error("Event: 'google-ai-sdk-load-failed' received.");
+            isAISdkReady = false;
+            sdkLoadAttempted = true; // Mark that SDK loading finished (unsuccessfully)
+            displayError("Failed to load the Google AI SDK. AI features disabled.");
+            updateButtonStates(); // Ensure buttons are disabled
         });
 
 
         // --- Initialization Functions ---
         async function initializeApp() {
             console.log("App Initializing (v9.9)...");
-            setLoadingState(true, "Initializing...");
-            chatArea.innerHTML = '';
-            renderGreetingOrLoginPrompt();
+            chatArea.innerHTML = ''; // Clear chat area initially
+            renderGreetingOrLoginPrompt(); // Show initial prompt
+            loadUserSettingsFromLocalStorage(); // Load theme/text size early
 
-            loadUserSettingsFromLocalStorage();
-            await loadGeminiApiKey(); // Tries to load key and init SDK
-            fbAuth.onAuthStateChanged(handleAuthStateChange); // Handles user state
+            // Set initial button states (mostly disabled)
+            updateButtonStates(true); // Start in a loading state
+            setLoadingState(true, "Initializing...");
+
+            // Try to load API Key. Initialization of genAI depends on SDK load event.
+            await loadGeminiApiKey();
+            fbAuth.onAuthStateChanged(handleAuthStateChange); // Firebase listener will handle login state
             switchView('chat');
-            // Don't focus input immediately, wait for state updates
-            console.log("App Initialization Complete.");
+            // Don't focus yet, wait for readiness
+            console.log("App Initialization Complete. Waiting for SDK/Login...");
+            // Set a timeout to check if SDK loaded after a reasonable period
+            setTimeout(() => {
+                if (!sdkLoadAttempted) {
+                    console.warn("AI SDK load status unknown after timeout. Assuming failure.");
+                    isAISdkReady = false;
+                    sdkLoadAttempted = true; // Prevent future checks
+                    displayError("AI SDK failed to load. Check network or browser console.");
+                    updateButtonStates();
+                    setLoadingState(false); // Allow login etc.
+                }
+            }, 7000); // 7 seconds timeout
         }
 
         async function loadGeminiApiKey() {
@@ -592,7 +607,7 @@
              API_KEY = localStorage.getItem(STORAGE_KEY_API_KEY);
              if(!API_KEY){
                  console.warn("!!! SECURITY WARNING !!! Using insecure API key storage.");
-                 API_KEY=prompt("--- INSECURE DEMO --- Please enter your Gemini API Key:");
+                 API_KEY=prompt("--- INSECURE DEMO --- Please enter your Gemini API Key (will be stored insecurely).");
                  if(API_KEY){
                      localStorage.setItem(STORAGE_KEY_API_KEY, API_KEY);
                      console.log("Saved insecure API Key.");
@@ -600,50 +615,71 @@
                      console.error("Gemini API Key is required.");
                      displayMessage("Gemini API Key is required for AI features.", 'ai', ['error-message']);
                      API_KEY = ''; genAI = null; isAISdkReady = false;
-                     updateButtonStates(); return false;
+                     updateButtonStates(); // Update UI to reflect missing key
+                     return false; // Indicate failure
                  }
-             } else { console.log("Loaded insecure API Key."); }
-
-             if (API_KEY && isAISdkReady && !genAI) { return initializeGenAIInstance(); }
-             else if (API_KEY && !isAISdkReady) { console.log("API Key loaded, but AI SDK not ready yet."); return true; }
-             else { return !!API_KEY; }
+             } else {
+                 console.log("Loaded insecure API Key.");
+             }
+             // Attempt initialization ONLY if SDK is already ready (event fired before key loaded)
+             if (API_KEY && isAISdkReady && !genAI) {
+                return initializeGenAIInstance();
+             } else if (API_KEY && !isAISdkReady) {
+                 console.log("API Key loaded, but AI SDK not ready yet. Waiting for load event.");
+                 return true; // Key is present, but SDK init deferred
+             } else {
+                 return !!API_KEY; // Return true if key exists (and SDK might already be init), false otherwise
+             }
         }
 
         function initializeGenAIInstance() {
-            if (!API_KEY || !isAISdkReady || genAI) { console.warn("Skipping genAI initialization. Conditions not met."); return false; }
-            console.log("Initializing GoogleGenerativeAI SDK instance...");
+            if (!API_KEY) { console.warn("Skipping genAI init: API Key missing."); return false; }
+            if (!isAISdkReady) { console.warn("Skipping genAI init: AI SDK not ready yet."); return false; }
+            if (genAI) { console.log("Skipping genAI init: Already initialized."); return true; }
+
+            console.log("Attempting to initialize GoogleGenerativeAI SDK instance...");
             try {
                  if (window.GoogleGenerativeAI) {
                      genAI = new window.GoogleGenerativeAI(API_KEY);
-                     console.log("GoogleGenerativeAI SDK instance created successfully.");
-                     return true;
-                 } else { console.error("GoogleGenerativeAI SDK constructor not found."); displayError("Error: AI SDK loaded but failed to initialize."); genAI = null; isAISdkReady = false; return false; }
+                     if (typeof genAI.uploadFile === 'function' && typeof genAI.getFile === 'function') {
+                         console.log("GoogleGenerativeAI SDK instance created successfully with required file methods.");
+                         return true;
+                     } else {
+                         console.error("GoogleGenerativeAI instance created, BUT required methods (uploadFile/getFile) are MISSING!");
+                         genAI = null; isAISdkReady = false;
+                         displayError("Error: AI SDK initialized incorrectly (missing functions). Try reloading.");
+                         return false;
+                     }
+                 } else {
+                     console.error("GoogleGenerativeAI constructor not found on window object.");
+                     displayError("Error: AI SDK failed to load constructor.");
+                     genAI = null; isAISdkReady = false; return false;
+                 }
             } catch (e) {
-                 console.error("Error initializing GoogleGenerativeAI:", e);
-                 displayError(`Error initializing AI SDK: ${e.message}. Check API Key.`);
-                 API_KEY = ''; localStorage.removeItem(STORAGE_KEY_API_KEY); genAI = null; isAISdkReady = false; return false;
-            } finally { updateButtonStates(); }
+                 console.error("!!! CRITICAL ERROR initializing GoogleGenerativeAI:", e);
+                 displayError(`Critical Error initializing AI SDK: ${e.message}. Check API Key & Console.`);
+                 API_KEY = ''; localStorage.removeItem(STORAGE_KEY_API_KEY);
+                 genAI = null; isAISdkReady = false; return false;
+            } finally {
+                 updateButtonStates(); // Update buttons AFTER attempting initialization
+                 // If initialization succeeded, allow user interaction
+                 if (genAI) setLoadingState(false);
+            }
         }
-
-
-        // --- Authentication Functions ---
-        async function signInWithGoogle() { /* ... (no changes needed) ... */ const provider = new firebase.auth.GoogleAuthProvider(); try { setLoadingState(true, "Logging in..."); await fbAuth.signInWithPopup(provider); } catch (error) { console.error("Google Sign-In Error:", error); displayError(`Login failed: ${error.message || 'Unknown error'}`); setLoadingState(false); } }
-        async function signOut() { /* ... (no changes needed) ... */ try { setLoadingState(true, "Logging out..."); await fbAuth.signOut(); } catch (error) { console.error("Sign Out Error:", error); displayError(`Logout failed: ${error.message || 'Unknown error'}`); setLoadingState(false); } }
 
         function handleAuthStateChange(user) {
             console.log("Auth state changed. User:", user ? user.uid : 'None');
+            const wasLoggedIn = !!currentUser;
             setLoadingState(true, user ? "Loading user data..." : "Logging out...");
 
             // Clear previous state and listeners
             if (activeChatListener) { activeChatListener(); activeChatListener = null; console.log("Cleared active chat listener."); }
             if (chatListListener) { chatListListener(); chatListListener = null; console.log("Cleared chat list listener.");}
             if (testListListener) { testListListener(); testListListener = null; console.log("Cleared test list listener."); }
-            stopRecording(true);
-            chatArea.innerHTML = '';
+            stopRecording(true); chatArea.innerHTML = '';
             chatListContainer.innerHTML = `<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">${user ? 'Loading chats...' : 'Please log in...'}</div>`;
             allTestsListContainer.innerHTML = `<div style="padding:10px;color:var(--text-secondary);font-size:0.9em;">${user ? 'Loading tests...' : 'Login to see tests.'}</div>`;
-            allTestsSection.classList.remove('visible');
-            testSearchInput.value = '';
+            allTestsSection.classList.remove('visible'); testSearchInput.value = '';
             activeChatId = null; currentChatHistory = []; isDeletingChat = false; allSavedTestsData = [];
             removeAllSelectedMedia();
 
@@ -654,12 +690,10 @@
                 accountAvatar.textContent = (currentUser.displayName || currentUser.email || 'U')[0].toUpperCase();
                 accountPlan.textContent = "Firebase User";
 
-                inputContainer.style.display = 'block';
-                suggestionsContainer.style.display = 'flex';
-                allTestsSection.classList.add('visible');
+                inputContainer.style.display = 'block'; suggestionsContainer.style.display = 'flex'; allTestsSection.classList.add('visible');
 
-                loadUserSettings(currentUser.uid); // Applies theme/text size
-                loadAndListenForChats(currentUser.uid); // Will update buttons via listener callback
+                loadUserSettings(currentUser.uid);
+                loadAndListenForChats(currentUser.uid); // Will update activeChatId and trigger button updates
                 loadAndListenForTests(currentUser.uid);
                 renderGreetingOrLoginPrompt();
 
@@ -668,21 +702,38 @@
                 loginBtn.style.display = 'inline-block'; logoutBtn.style.display = 'none';
                 accountEmail.textContent = "Not logged in"; accountAvatar.textContent = '?'; accountPlan.textContent = "";
 
-                inputContainer.style.display = 'none';
-                suggestionsContainer.style.display = 'none';
-                allTestsSection.classList.remove('visible');
+                inputContainer.style.display = 'none'; suggestionsContainer.style.display = 'none'; allTestsSection.classList.remove('visible');
 
                 renderGreetingOrLoginPrompt();
-                // Keep local theme/text size visual defaults
-                currentTheme = localStorage.getItem('chatTheme') || 'light'; applyTheme();
-                currentTextSizeMultiplier = parseFloat(localStorage.getItem('chatTextSizeMultiplier')) || 1.0; applyTextSize();
+                // Keep local theme/text size visually, don't reset to defaults unless intended
+                // currentTheme = 'light'; applyTheme();
+                // currentTextSizeMultiplier = 1.0; applyTextSize();
             }
 
-            updateButtonStates(); // Update buttons based on new auth state
-            setLoadingState(false); // Done with auth change
+            // Update button states based on the new auth status, API key, SDK readiness, and active chat
+            updateButtonStates(); // Crucial call here
+            setLoadingState(false); // Done with auth change processing
+            // Focus input only if everything is ready after login/state change
+            if (currentUser && activeChatId && isAISdkReady && genAI) {
+                setTimeout(() => userInput.focus(), 100);
+            }
         }
 
-        function renderGreetingOrLoginPrompt() { /* ... (no changes needed) ... */ chatArea.innerHTML = ''; const greetingElement = document.createElement('div'); greetingElement.classList.add('greeting'); if (currentUser) { greetingElement.innerHTML = `<span class="asterisk">*</span>Good day, ${currentUser.displayName || 'User'}!`; chatArea.appendChild(greetingElement); if (!activeChatId) { displayMessage("Select a chat from the list or start a new one.", 'ai'); } else if (!API_KEY || !genAI) { displayMessage("API Key missing or AI SDK failed to initialize. AI features are disabled. Please check API Key or reload.", 'ai', ['error-message']); } } else { greetingElement.innerHTML = `<span class="asterisk">*</span>Welcome!`; chatArea.appendChild(greetingElement); displayMessage("Please log in with Google to use the chat and save your history.", 'ai'); } scrollToBottom(true); }
+        function renderGreetingOrLoginPrompt() {
+             chatArea.innerHTML = ''; const greetingElement = document.createElement('div');
+             greetingElement.classList.add('greeting');
+             if (currentUser) {
+                 greetingElement.innerHTML = `<span class="asterisk">*</span>Good day, ${currentUser.displayName || 'User'}!`;
+                 chatArea.appendChild(greetingElement);
+                 if (!API_KEY || !genAI) { displayMessage("API Key missing or AI SDK failed to initialize. AI features are disabled.", 'ai', ['error-message']); }
+                 else if (!activeChatId) { displayMessage("Select a chat or start a new one.", 'ai'); }
+             } else {
+                 greetingElement.innerHTML = `<span class="asterisk">*</span>Welcome!`;
+                 chatArea.appendChild(greetingElement);
+                 displayMessage("Please log in to start chatting.", 'ai');
+             }
+             scrollToBottom(true);
+         }
 
         // --- Settings (Theme/Text Size) ---
         function loadUserSettingsFromLocalStorage() { /* ... (no changes needed) ... */ const savedTheme = localStorage.getItem('chatTheme'); const savedTextSize = localStorage.getItem('chatTextSizeMultiplier'); currentTheme = savedTheme || 'light'; currentTextSizeMultiplier = savedTextSize ? parseFloat(savedTextSize) : 1.0; applyTheme(); applyTextSize(); }
@@ -695,7 +746,30 @@
 
 
         // --- Chat Storage & Loading (Firestore) ---
-         function loadAndListenForChats(userId) { /* ... (no changes needed in logic, button updates handled centrally) ... */ if (chatListListener) { chatListListener(); chatListListener = null; } const chatsRef = db.collection('chats').where('userId', '==', userId).orderBy('lastUpdated', 'desc'); console.log(`Listening for chats for user ${userId}`); chatListListener = chatsRef.onSnapshot(snapshot => { if (isDeletingChat) { console.log("Skipping chat list update during delete."); return; } const chats = []; snapshot.forEach(doc => { chats.push({ id: doc.id, ...doc.data() }); }); console.log("Received chat list snapshot:", chats.length, "chats"); renderSidebarChatList(chats); let chatToLoad = activeChatId; if (!chatToLoad || !chats.some(c => c.id === chatToLoad)) { chatToLoad = chats.length > 0 ? chats[0].id : null; if (chatToLoad) console.log("Active chat gone or none selected, switching to newest:", chatToLoad); } if (chatToLoad && chatToLoad !== activeChatId) { switchChat(chatToLoad); } else if (chatToLoad && chatToLoad === activeChatId) { highlightActiveChatInSidebar(); updateButtonStates(); setLoadingState(false); } else { activeChatId = null; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); updateButtonStates(); setLoadingState(false); } }, error => { console.error("Error listening for chats:", error); displayError("Could not load chat list."); chatListContainer.innerHTML = '<div style="padding:10px;color:var(--error-text);">Error loading chats.</div>'; setLoadingState(false); }); }
+         function loadAndListenForChats(userId) { /* ... (logic adjusted slightly in v9.8, should be fine) ... */
+            if (chatListListener) { chatListListener(); chatListListener = null; }
+            const chatsRef = db.collection('chats').where('userId', '==', userId).orderBy('lastUpdated', 'desc');
+            console.log(`Listening for chats for user ${userId}`);
+            chatListListener = chatsRef.onSnapshot(snapshot => {
+                 if (isDeletingChat) { return; }
+                const chats = []; snapshot.forEach(doc => { chats.push({ id: doc.id, ...doc.data() }); });
+                console.log("Received chat list snapshot:", chats.length, "chats");
+                renderSidebarChatList(chats);
+                let chatToLoad = activeChatId;
+                if (!chatToLoad || !chats.some(c => c.id === chatToLoad)) {
+                     chatToLoad = chats.length > 0 ? chats[0].id : null;
+                     if (chatToLoad) console.log("Switching to newest chat:", chatToLoad);
+                }
+                if (chatToLoad && chatToLoad !== activeChatId) {
+                     switchChat(chatToLoad);
+                } else if (chatToLoad && chatToLoad === activeChatId) {
+                     highlightActiveChatInSidebar(); updateButtonStates(); setLoadingState(false);
+                } else { // No chats exist
+                     activeChatId = null; if (activeChatListener) { activeChatListener(); activeChatListener = null; }
+                     renderGreetingOrLoginPrompt(); updateButtonStates(); setLoadingState(false);
+                }
+            }, error => { console.error("Error listening for chats:", error); displayError("Could not load chat list."); chatListContainer.innerHTML = '<div style="padding:10px;color:var(--error-text);">Error loading chats.</div>'; setLoadingState(false); });
+         }
         function renderSidebarChatList(chats) { /* ... (no changes needed) ... */ chatListContainer.innerHTML = ''; if (!currentUser) { chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">Please log in.</div>'; return; } if (chats.length === 0) { chatListContainer.innerHTML = '<div style="padding:10px;color:var(--text-secondary);">No chats yet. Start one!</div>'; } else { chats.forEach(chatData => { const itemElement = document.createElement('div'); itemElement.classList.add('chat-list-item'); let title = chatData.title; if (typeof title !== 'string' || !title.trim()) { title = '(Untitled Chat)'; } title = title.trim(); itemElement.textContent = title; itemElement.dataset.id = chatData.id; itemElement.title = title; const deleteBtn = document.createElement('button'); deleteBtn.classList.add('delete-chat-button'); deleteBtn.innerHTML = DELETE_ICON; deleteBtn.title = "Delete chat"; deleteBtn.dataset.id = chatData.id; itemElement.appendChild(deleteBtn); chatListContainer.appendChild(itemElement); }); } highlightActiveChatInSidebar(); }
         function highlightActiveChatInSidebar() { /* ... (no changes needed) ... */ const items = chatListContainer.querySelectorAll('.chat-list-item'); items.forEach(item => { item.classList.toggle('active', item.dataset.id === activeChatId); }); }
 
@@ -711,8 +785,8 @@
         function removeAllSelectedMedia() { /* ... (no changes needed) ... */ console.log("removeAllSelectedMedia called."); stopRecording(true); selectedMediaItems = []; nextMediaId = 0; imagePreviewsList.innerHTML = ''; previewAudio.removeAttribute('src'); previewAudioContainer.style.display = 'none'; mediaPreviewContainer.style.display = 'none'; mediaPreviewInfo.textContent = ''; imagePreviewsList.style.flexDirection = ''; imagePreviewsList.style.alignItems = ''; imageUploadInput.value = ''; pdfUploadInput.value = ''; audioUploadInput.value = ''; console.log("All selected media removed."); }
 
         // --- Audio Recording Functions ---
-        async function toggleRecording() { /* ... (no changes needed) ... */ if (isRecording) { stopRecording(); } else { if (selectedMediaItems.some(item => item.type === 'image' || item.type === 'pdf')) { alert("Cannot record audio when images or PDFs are selected. Remove them first."); return; } const appReady = currentUser && API_KEY && genAI && activeChatId; if (!appReady || (sendButton.disabled && !isRecording) || userInput.placeholder.includes("Generating") || userInput.placeholder.includes("Sending") || userInput.placeholder.includes("Uploading")) { alert("Please wait for the current action to complete or ensure app is ready."); return; } await startRecording(); } }
-        async function startRecording() { /* ... (no changes needed) ... */ console.log("Attempting to start recording..."); if (selectedMediaItems.length > 0) { alert("Cannot record audio when other media is selected."); return; } if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Audio recording is not supported."); return; } try { if (recorderStream) { recorderStream.getTracks().forEach(track => track.stop()); recorderStream = null; } const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); recorderStream = stream; console.log("Mic access granted."); recordAudioButton.disabled = true; let options = {}; const preferredMimeTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/aac', 'audio/mp4']; for (const mimeType of preferredMimeTypes) { if (MediaRecorder.isTypeSupported(mimeType)) { options.mimeType = mimeType; break; } } mediaRecorder = new MediaRecorder(stream, options); const actualMimeType = mediaRecorder.mimeType; console.log("MediaRecorder init. Type:", actualMimeType); audioChunks = []; mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); }; mediaRecorder.onstop = () => { console.log("Recorder stopped."); if (recorderStream) { recorderStream.getTracks().forEach(track => track.stop()); recorderStream = null; } isRecording = false; recordingStatus.classList.remove('visible'); recordAudioButton.classList.remove('recording'); recordAudioButton.textContent = '🎙️'; recordAudioButton.title = 'Record audio'; if (recordingTimerInterval) clearInterval(recordingTimerInterval); if (audioChunks.length === 0) { console.warn("No audio data."); updateButtonStates(); return; } const audioBlob = new Blob(audioChunks, { type: actualMimeType }); audioChunks = []; const fileSizeMB = audioBlob.size / 1024 / 1024; if (audioBlob.size === 0) { alert("Recording failed: No data."); updateButtonStates(); return; } if (fileSizeMB > MAX_AUDIO_SIZE_MB) { alert(`Audio too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.`); updateButtonStates(); return; } const reader = new FileReader(); reader.onloadend = () => { if (reader.result?.startsWith('data:')) { let finalMimeType = actualMimeType.split(';')[0]; const mediaId = nextMediaId++; selectedMediaItems = [{ id: mediaId, type: 'audio', file: new File([audioBlob], `recording.audio`, { type: finalMimeType }), base64: reader.result, mimeType: finalMimeType, name: `recording-${new Date().toISOString().substring(0, 19).replace(/[:T]/g, '-')}.${finalMimeType.split('/')[1] || 'audio'}` }]; displayMediaPreview(); } else { alert("Error processing recorded audio."); } updateButtonStates(); }; reader.onerror = (error) => { alert("Error processing recorded audio."); updateButtonStates(); }; reader.readAsDataURL(audioBlob); setLoadingState(true, "Processing audio..."); }; mediaRecorder.onerror = (e) => { alert(`Recording error: ${e.error?.name || 'Unknown'}`); stopRecording(true); }; mediaRecorder.start(); isRecording = true; recordingStartTime = Date.now(); recordAudioButton.classList.add('recording'); recordAudioButton.textContent = '🛑'; recordAudioButton.title = 'Stop recording'; recordingStatus.classList.add('visible'); recordingTimerSpan.textContent = '0s'; setLoadingState(true, "Recording..."); recordingTimerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000); recordingTimerSpan.textContent = `${elapsed}s`; if (elapsed >= RECORDING_TIME_LIMIT_SECONDS) { stopRecording(); alert(`Stopped after ${RECORDING_TIME_LIMIT_SECONDS} seconds.`); } }, 1000); console.log("Recording started."); recordAudioButton.disabled = false; } catch (error) { console.error("Error starting recording:", error); if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') { alert("Mic access denied."); } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') { alert("No mic found."); } else { alert(`Could not start recording: ${error.name}`); } stopRecording(true); } }
+        async function toggleRecording() { /* ... (logic updated in v9.8, should be fine) ... */ if (isRecording) { stopRecording(); } else { if (selectedMediaItems.some(item => item.type === 'image' || item.type === 'pdf')) { alert("Cannot record audio when images or PDFs are selected. Remove them first."); return; } const isAppBusy = !currentUser || !API_KEY || !genAI || !activeChatId || sendButton.disabled; const isLoadingState = userInput.placeholder.includes("Generating") || userInput.placeholder.includes("Sending") || userInput.placeholder.includes("Uploading") || userInput.placeholder.includes("Processing"); if (isAppBusy || isLoadingState) { alert("Please wait for the current action to complete or ensure you are logged in with a valid API key and active chat."); return; } await startRecording(); } }
+        async function startRecording() { /* ... (no changes needed) ... */ console.log("Attempting to start recording..."); if (selectedMediaItems.length > 0) { alert("Cannot record audio when other media is selected."); return; } if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { alert("Audio recording not supported."); console.error("getUserMedia not supported."); return; } try { console.log("Requesting microphone access..."); if (recorderStream) { recorderStream.getTracks().forEach(track => track.stop()); recorderStream = null; } const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); recorderStream = stream; console.log("Mic access granted."); recordAudioButton.disabled = true; let options = {}; const preferredMimeTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/aac', 'audio/mp4']; for (const mimeType of preferredMimeTypes) { if (MediaRecorder.isTypeSupported(mimeType)) { options.mimeType = mimeType; break; } } const mediaRecorder = new MediaRecorder(stream, options); const actualMimeType = mediaRecorder.mimeType; console.log("MediaRecorder init. Options:", options, "Actual:", actualMimeType); audioChunks = []; mediaRecorder.ondataavailable = (event) => { if (event.data.size > 0) audioChunks.push(event.data); }; mediaRecorder.onstop = () => { console.log("Recorder stopped."); if (recorderStream) { recorderStream.getTracks().forEach(track => track.stop()); recorderStream = null; } isRecording = false; recordingStatus.classList.remove('visible'); recordAudioButton.classList.remove('recording'); recordAudioButton.textContent = '🎙️'; recordAudioButton.title = 'Record audio'; if (recordingTimerInterval) clearInterval(recordingTimerInterval); if (audioChunks.length === 0) { console.warn("No audio data."); updateButtonStates(); return; } const audioBlob = new Blob(audioChunks, { type: actualMimeType }); audioChunks = []; const fileSizeMB = audioBlob.size / 1024 / 1024; if (audioBlob.size === 0 || fileSizeMB > MAX_AUDIO_SIZE_MB) { alert(`Recording failed or too large (${fileSizeMB.toFixed(1)}MB). Max ${MAX_AUDIO_SIZE_MB}MB.`); updateButtonStates(); return; } const reader = new FileReader(); reader.onloadend = () => { if (reader.result?.startsWith('data:')) { let finalMimeType = actualMimeType.split(';')[0]; const mediaId = nextMediaId++; selectedMediaItems = [{ id: mediaId, type: 'audio', file: new File([audioBlob], `rec.audio`, { type: finalMimeType }), base64: reader.result, mimeType: finalMimeType, name: `rec-${new Date().toISOString().substring(11, 19).replace(/:/g, '')}.${finalMimeType.split('/')[1] || 'audio'}` }]; displayMediaPreview(); } else { alert("Error processing recording."); } updateButtonStates(); }; reader.onerror = (error) => { alert("Error processing recording."); updateButtonStates(); }; reader.readAsDataURL(audioBlob); setLoadingState(true, "Processing audio..."); }; mediaRecorder.onerror = (event) => { alert(`Recording error: ${event.error?.name || 'Unknown'}`); stopRecording(true); }; mediaRecorder.start(); isRecording = true; recordingStartTime = Date.now(); recordAudioButton.classList.add('recording'); recordAudioButton.textContent = '🛑'; recordAudioButton.title = 'Stop recording'; recordingStatus.classList.add('visible'); recordingTimerSpan.textContent = '0s'; setLoadingState(true, "Recording..."); recordingTimerInterval = setInterval(() => { const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000); recordingTimerSpan.textContent = `${elapsed}s`; if (elapsed >= RECORDING_TIME_LIMIT_SECONDS) { stopRecording(); alert(`Stopped after ${RECORDING_TIME_LIMIT_SECONDS}s.`); } }, 1000); recordAudioButton.disabled = false; } catch (error) { console.error("Error starting recording:", error); if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') alert("Mic access denied."); else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') alert("No mic found."); else alert(`Could not start recording: ${error.name}`); stopRecording(true); } }
         function stopRecording(force = false) { /* ... (no changes needed) ... */ console.log("stopRecording called. isRecording:", isRecording, "force:", force); if (mediaRecorder && (isRecording || force)) { try { if (mediaRecorder.state === "recording" || mediaRecorder.state === "paused") { mediaRecorder.stop(); console.log("MediaRecorder.stop() called."); } else if (force) { console.log("Recorder not active, forcing cleanup."); resetRecordingUI(); } } catch (error) { console.error("Error calling mediaRecorder.stop():", error); resetRecordingUI(); } } else if (force) { resetRecordingUI(); } else { console.log("Not recording or recorder not available."); } }
         function resetRecordingUI() { /* ... (no changes needed) ... */ console.log("Resetting recording UI/state."); isRecording = false; if (recordAudioButton) { recordAudioButton.classList.remove('recording'); recordAudioButton.textContent = '🎙️'; recordAudioButton.title = 'Record audio'; } if (recordingStatus) recordingStatus.classList.remove('visible'); if (recordingTimerInterval) { clearInterval(recordingTimerInterval); recordingTimerInterval = null; } if (recorderStream) { recorderStream.getTracks().forEach(track => track.stop()); console.log("Mic stream stopped (reset UI)."); recorderStream = null; } mediaRecorder = null; audioChunks = []; updateButtonStates(); }
 
@@ -725,60 +799,93 @@
         function switchChat(chatId) { /* ... (no changes needed) ... */ if (!currentUser || !chatId || chatId === activeChatId) return; console.log("Switching to chat:", chatId); setLoadingState(true, "Loading chat..."); activeChatId = chatId; removeAllSelectedMedia(); highlightActiveChatInSidebar(); userInput.value = ''; autoGrowTextarea(); mcqModeCheckbox.checked = false; loadAndListenForActiveChat(chatId); }
 
         // --- Message Loading (Firestore) ---
-        function loadAndListenForActiveChat(chatId) { /* ... (no changes needed) ... */ if (!currentUser || !chatId) { chatArea.innerHTML = ''; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); updateButtonStates(); setLoadingState(false); return; } if (activeChatListener) { activeChatListener(); activeChatListener = null; } const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'asc'); chatArea.innerHTML = ''; const loadingMsg = displayMessage("Loading chat history...", 'ai', ['thinking']); scrollToBottom(true); console.log(`Listening for messages in chat ${chatId}`); activeChatListener = messagesRef.onSnapshot(snapshot => { console.log(`Received messages snapshot for chat ${chatId}:`, snapshot.size, "messages"); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; if (snapshot.empty && activeChatId === chatId) { const chatListItem = chatListContainer.querySelector(`.chat-list-item[data-id="${chatId}"]`); const chatTitle = chatListItem?.textContent?.replace(DELETE_ICON, '').trim() || ''; if (chatTitle && chatTitle !== NEW_CHAT_TITLE) { displayMessage("Chat is empty. Send a message to start!", 'ai'); } else { renderGreetingOrLoginPrompt(); } } else { snapshot.forEach(doc => { const msgData = doc.data(); const role = msgData.role === 'user' ? 'user' : 'model'; const parts = []; if (msgData.text) parts.push({ text: msgData.text }); currentChatHistory.push({ role: role, parts: parts.filter(p => p.text) }); displayMessage(msgData.text || '', msgData.role, [], null, msgData); }); } scrollToBottom(true); updateButtonStates(); setLoadingState(false); if (!isTestMode && !isReviewMode && activeChatId) { setTimeout(() => userInput.focus(), 100); } }, error => { console.error(`Error listening messages chat ${chatId}:`, error); displayError("Could not load messages for this chat."); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; updateButtonStates(); setLoadingState(false); }); }
+        function loadAndListenForActiveChat(chatId) { /* ... (logic adjusted in v9.8, should be fine) ... */ if (!currentUser || !chatId) { chatArea.innerHTML = ''; if (activeChatListener) { activeChatListener(); activeChatListener = null; } renderGreetingOrLoginPrompt(); updateButtonStates(); setLoadingState(false); return; } if (activeChatListener) { activeChatListener(); activeChatListener = null; } const messagesRef = db.collection('chats').doc(chatId).collection('messages').orderBy('timestamp', 'asc'); chatArea.innerHTML = ''; const loadingMsg = displayMessage("Loading chat history...", 'ai', ['thinking']); scrollToBottom(true); console.log(`Listening for messages in chat ${chatId}`); activeChatListener = messagesRef.onSnapshot(snapshot => { console.log(`Messages snapshot: ${snapshot.size} msgs`); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; if (snapshot.empty && activeChatId === chatId) { const chatListItem = chatListContainer.querySelector(`.chat-list-item[data-id="${chatId}"]`); const chatTitle = chatListItem?.textContent?.replace(DELETE_ICON, '').trim() || ''; if (chatTitle && chatTitle !== NEW_CHAT_TITLE) { displayMessage("Chat is empty. Send a message!", 'ai'); } else { renderGreetingOrLoginPrompt(); } } else { snapshot.forEach(doc => { const msgData = doc.data(); const role = msgData.role === 'user' ? 'user' : 'model'; const parts = []; if (msgData.text) parts.push({ text: msgData.text }); currentChatHistory.push({ role: role, parts: parts.filter(p => p.text) }); displayMessage(msgData.text || '', msgData.role, [], null, msgData); }); } scrollToBottom(true); updateButtonStates(); setLoadingState(false); if (!isTestMode && !isReviewMode && activeChatId && genAI) { setTimeout(() => userInput.focus(), 100); } }, error => { console.error(`Error listening messages chat ${chatId}:`, error); displayError("Could not load messages."); removeMessageElement(loadingMsg); chatArea.innerHTML = ''; currentChatHistory = []; updateButtonStates(); setLoadingState(false); }); }
 
         // --- File Upload Helper (Gemini File API) ---
-        // *** FIXED: Use genAI.files.upload and genAI.files.get ***
         async function uploadAndProcessFile(file, index, totalFiles) {
-            if (!genAI) throw new Error("AI SDK not initialized.");
+            // ** Added Explicit Checks **
+            if (!genAI) { console.error("Upload Error: genAI instance is not available."); throw new Error("AI SDK not initialized. Cannot upload file."); }
+            if (typeof genAI.uploadFile !== 'function') { console.error("Upload Error: genAI.uploadFile is not a function.", genAI); throw new Error("AI SDK error: uploadFile function missing."); }
+            if (typeof genAI.getFile !== 'function') { console.error("Upload Error: genAI.getFile is not a function.", genAI); throw new Error("AI SDK error: getFile function missing."); }
+
             const progressMsg = `Uploading file ${index + 1}/${totalFiles}: ${file.name}...`;
             console.log(`[File API] ${progressMsg}`);
             setLoadingState(true, progressMsg);
 
             try {
-                // 1. Upload the file using genAI.files.upload
-                const uploadResult = await genAI.files.upload({ // <--- FIX: Use genAI.files.upload
-                    file: file, mimeType: file.type, displayName: file.name,
-                });
-                const uploadedFile = uploadResult.file; // Get the file object from the response
-                console.log(`[File API] Uploaded ${uploadedFile.name}. State: ${uploadedFile.state}`);
+                console.log(`[File API] Calling genAI.uploadFile for ${file.name}`);
+                const uploadResult = await genAI.uploadFile({ file: file, mimeType: file.type, displayName: file.name, });
+                console.log(`[File API] Upload successful for ${file.name}. API Name: ${uploadResult.file.name}, State: ${uploadResult.file.state}`);
 
-                // 2. Poll for processing completion using genAI.files.get
-                let fileResponse = await genAI.files.get(uploadedFile.name); // <--- FIX: Use genAI.files.get
-                const startTime = Date.now();
-                const timeoutMs = 180000;
+                console.log(`[File API] Calling genAI.getFile for ${uploadResult.file.name} (Polling)`);
+                let fileResponse = await genAI.getFile(uploadResult.file.name);
+                const startTime = Date.now(); const timeoutMs = 180000; // 3 mins
 
                 while (fileResponse.file.state === 'PROCESSING') {
-                    if (Date.now() - startTime > timeoutMs) { throw new Error(`File processing timed out for ${file.name}.`); }
+                    if (Date.now() - startTime > timeoutMs) throw new Error(`File processing timed out for ${file.name}.`);
                     const processMsg = `Processing file ${index + 1}/${totalFiles}: ${file.name}...`;
                     setLoadingState(true, processMsg);
-                    console.log(`[File API] File ${file.name} state: ${fileResponse.file.state}. Waiting...`);
+                    console.log(`[File API] File ${file.name} state: ${fileResponse.file.state}. Waiting 5s...`);
                     await new Promise(resolve => setTimeout(resolve, 5000));
                     try {
-                        fileResponse = await genAI.files.get(uploadedFile.name); // <--- FIX: Use genAI.files.get
-                    } catch (pollError) {
-                        console.error(`[File API] Error polling file ${uploadedFile.name}:`, pollError);
-                        throw new Error(`Error checking processing status for ${file.name}.`);
-                    }
+                        console.log(`[File API] Calling genAI.getFile for ${uploadResult.file.name} (Polling retry)`);
+                        fileResponse = await genAI.getFile(uploadResult.file.name);
+                    } catch (pollError) { console.error(`[File API] Error polling file ${uploadResult.file.name}:`, pollError); throw new Error(`Error checking status for ${file.name}.`); }
                 }
 
-                // 3. Check final state
-                if (fileResponse.file.state !== 'ACTIVE') {
-                    console.error(`[File API] File processing failed for ${file.name}. State: ${fileResponse.file.state}`, fileResponse);
-                    throw new Error(`File processing for ${file.name} resulted in state: ${fileResponse.file.state}.`);
-                }
+                if (fileResponse.file.state !== 'ACTIVE') { console.error(`[File API] File processing failed for ${file.name}. Final State: ${fileResponse.file.state}`, fileResponse); throw new Error(`File processing for ${file.name} resulted in state: ${fileResponse.file.state}.`); }
 
                 console.log(`[File API] File ${file.name} processed successfully. URI: ${fileResponse.file.uri}`);
                 return fileResponse.file;
             } catch (uploadError) {
-                 console.error(`[File API] Error during upload/processing for ${file.name}:`, uploadError);
-                 throw uploadError;
+                 console.error(`[File API] CRITICAL Error during upload/processing for ${file.name}:`, uploadError);
+                 if (uploadError.message?.includes("API key not valid")) { displayError("API Key Error: Key not valid. Please check/re-enter."); API_KEY = ''; localStorage.removeItem(STORAGE_KEY_API_KEY); genAI = null; isAISdkReady = false; updateButtonStates(); }
+                 else if (uploadError.message?.includes("timed out")) { displayError(`Processing timed out for file: ${file.name}.`); }
+                 else { displayError(`Upload/Processing Error: ${uploadError.message || 'Unknown error'}`);} // Show other errors
+                 throw uploadError; // Re-throw
             }
         }
 
+
         // --- Message Sending (Gemini API & Firestore Save) ---
-        // *** No changes needed here, the fix was in uploadAndProcessFile ***
-        async function handleSendMessage() { /* ... (same as v9.8) ... */ const userMessageTextRaw = userInput.value.trim(); const mediaItemsToSend = [...selectedMediaItems]; console.log("handleSendMessage: Text:", userMessageTextRaw, "Media items:", mediaItemsToSend.length); if (!currentUser) { displayError("Please log in."); return; } if (!activeChatId) { displayError("Please select/create chat."); return; } if (!API_KEY || !genAI) { displayError("API Key/SDK not ready."); return; } if (!userMessageTextRaw && mediaItemsToSend.length === 0) { return; } if (sendButton.disabled || isRecording) { console.log("Send disabled."); return; } setLoadingState(true, "Preparing message..."); userInput.value = ''; autoGrowTextarea(); const isMCQRequest = mcqModeCheckbox.checked; if (isMCQRequest) mcqModeCheckbox.checked = false; removeAllSelectedMedia(); const timestamp = firebase.firestore.FieldValue.serverTimestamp(); const messagesColRef = db.collection('chats').doc(activeChatId).collection('messages'); const chatDocRef = db.collection('chats').doc(activeChatId); const userMsgData = { role: "user", text: userMessageTextRaw, timestamp: timestamp }; const singleAudioItem = mediaItemsToSend.find(item => item.type === 'audio'); const imageItems = mediaItemsToSend.filter(item => item.type === 'image'); const pdfItems = mediaItemsToSend.filter(item => item.type === 'pdf'); let potentialTestTitle = null; if (singleAudioItem) { userMsgData.mediaType = 'audio'; userMsgData.mediaData = singleAudioItem.base64; userMsgData.mediaMimeType = singleAudioItem.mimeType; userMsgData.mediaName = singleAudioItem.name; } else if (imageItems.length === 1) { userMsgData.mediaType = 'image'; userMsgData.mediaName = imageItems[0].name; userMsgData.mediaMimeType = imageItems[0].mimeType; if (!imageItems[0].base64) { try { imageItems[0].base64 = await readFileAsBase64(imageItems[0].file); } catch (e) { console.error("Error reading image for DB:", e);}} userMsgData.mediaData = imageItems[0].base64; } else if (imageItems.length > 1) { userMsgData.mediaType = 'multi-image'; userMsgData.mediaCount = imageItems.length; userMsgData.mediaNames = imageItems.map(img => img.name); } else if (pdfItems.length > 0) { userMsgData.mediaType = 'multi-pdf'; userMsgData.mediaCount = pdfItems.length; userMsgData.mediaNames = pdfItems.map(pdf => pdf.name); } const youtubeMatch = userMessageTextRaw.match(youtubeRegex); if (youtubeMatch) userMsgData.youtubeVideoId = youtubeMatch[1]; try { const chatSnap = await chatDocRef.get(); let isFirstUserMessageInNewChat = false; if (chatSnap.exists && chatSnap.data().title === NEW_CHAT_TITLE) { const messagesSnap = await messagesColRef.limit(1).get(); if (messagesSnap.empty) { isFirstUserMessageInNewChat = true; } } await messagesColRef.add(userMsgData); await chatDocRef.update({ lastUpdated: timestamp }); console.log("User message saved."); if (isFirstUserMessageInNewChat) { let titleSource = userMessageTextRaw || (mediaItemsToSend[0]?.name) || "New Chat"; const generatedTitle = generateChatTitle(titleSource); if (generatedTitle && generatedTitle !== NEW_CHAT_TITLE) { await updateActiveChatTitle(generatedTitle); } } } catch(error) { console.error("Error saving user message:", error); displayError("Failed to save message."); setLoadingState(false); return; } const thinking = displayMessage("Thinking...", 'ai', ['thinking']); scrollToBottom(); const partsForApi = []; let userTextForPrompt = userMessageTextRaw; if (isMCQRequest) { let baseTitle = userMessageTextRaw || (mediaItemsToSend[0]?.name) || "Generated Test"; potentialTestTitle = generateChatTitle(baseTitle) + ` (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`; const mcqInstructions = `\n\nPlease generate multiple choice questions based on the provided text and/or media (image(s)/PDF(s)/audio). Provide the response *only* as a valid JSON array string, enclosed within \`\`\`json ... \`\`\`. Each object in the array must have "question" (object with "en" and "ta" strings), "options" (array of 4 objects with "en" and "ta" strings), "answer" (string 'A', 'B', 'C', or 'D'), and "explanation" (object with "en" and "ta" strings). Provide accurate English content only. Do not include any text outside the JSON structure.`; userTextForPrompt = userTextForPrompt ? userTextForPrompt + mcqInstructions : mcqInstructions; console.log("MCQ mode: Modified prompt."); } if (userTextForPrompt) partsForApi.push({ text: userTextForPrompt }); try { if (singleAudioItem) { const base64Data = singleAudioItem.base64.substring(singleAudioItem.base64.indexOf(',') + 1); partsForApi.push({ inlineData: { mimeType: singleAudioItem.mimeType, data: base64Data } }); console.log(`Added audio inlineData.`); } else if (imageItems.length > 0) { const imageBase64Promises = imageItems.map(item => item.base64 || readFileAsBase64(item.file)); const imageBase64Results = await Promise.all(imageBase64Promises); imageBase64Results.forEach((b64, index) => { const mime = imageItems[index].mimeType; const data = b64.substring(b64.indexOf(',') + 1); if(data && mime) partsForApi.push({ inlineData: { mimeType: mime, data: data } }); else console.error(`Missing data/mime for image: ${imageItems[index].name}`); }); console.log(`Added ${imageItems.length} images as inlineData.`); } else if (pdfItems.length > 0) { console.log(`Uploading ${pdfItems.length} PDF(s) via File API...`); const uploadPromises = pdfItems.map((item, index) => uploadAndProcessFile(item.file, index, pdfItems.length)); const uploadedFiles = await Promise.all(uploadPromises); uploadedFiles.forEach(file => { if (file?.uri && file?.mimeType) { partsForApi.push({ fileData: { mimeType: file.mimeType, fileUri: file.uri } }); } else { console.error("Upload result missing URI/mimeType:", file); throw new Error("Failed to get complete PDF details."); } }); console.log(`Added ${pdfItems.length} PDFs as fileData.`); } if (partsForApi.length === 0) { throw new Error("No valid content to send."); } console.log("Calling Gemini API via SDK..."); setLoadingState(true, "Generating response..."); const model = genAI.getGenerativeModel({ model: MODEL_NAME, safetySettings: [ { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, ] }); const historyForSDK = currentChatHistory.map(msg => ({ role: msg.role, parts: msg.parts.filter(part => part.text) })).filter(msg => msg.parts.length > 0); const contentsRequest = [ ...historyForSDK, { role: "user", parts: partsForApi } ]; const result = await model.generateContent({ contents: contentsRequest }); const response = result.response; removeMessageElement(thinking); let aiMsgData = { role: "model", text: "Error: No valid response.", timestamp: firebase.firestore.FieldValue.serverTimestamp(), mcqData: null, mcqTitle: null }; let displayAsError = true; let rawAiText = ""; let blocked = false; if (response.promptFeedback?.blockReason) { aiMsgData.text = `Blocked (Prompt): ${response.promptFeedback.blockReason}`; blocked = true; displayAsError = true; console.warn("Prompt blocked:", response.promptFeedback); } else if (response.candidates && response.candidates.length > 0) { const candidate = response.candidates[0]; if (candidate.finishReason === 'SAFETY') { aiMsgData.text = `Blocked (Safety): ${candidate.safetyRatings?.map(r => `${r.category.replace('HARM_CATEGORY_','')} (${r.probability})`).join(', ') || 'Reason'}`; blocked = true; displayAsError = true; console.warn("Response blocked (Safety):", candidate.safetyRatings); } else if (candidate.finishReason === 'RECITATION') { aiMsgData.text = `Blocked (Recitation)`; blocked = true; displayAsError = true; console.warn("Response blocked (Recitation)"); } else if (candidate.content?.parts?.length > 0) { try { rawAiText = response.text(); aiMsgData.text = rawAiText; displayAsError = false; if (isMCQRequest && !blocked) { try { const jsonMatch = rawAiText.match(/```json\s*([\s\S]*?)\s*```/); const jsonString = jsonMatch ? jsonMatch[1].trim() : rawAiText.trim(); if (jsonString.startsWith('[') && jsonString.endsWith(']')) { const mcqs = JSON.parse(jsonString); const isValid = Array.isArray(mcqs) && mcqs.length > 0 && mcqs.every(q => q.question?.en && q.options?.length === 4 && q.options.every(opt=>opt.en) && q.answer && q.explanation?.en); if (isValid) { mcqs.forEach(q => { q.question.ta = q.question.ta || q.question.en; q.explanation.ta = q.explanation.ta || q.explanation.en; q.options.forEach(opt => { opt.ta = opt.ta || opt.en; }); }); aiMsgData.text = `Generated ${mcqs.length} MCQs.`; aiMsgData.mcqData = mcqs; aiMsgData.mcqTitle = potentialTestTitle; console.log("MCQs parsed."); displayAsError = false; } else { throw new Error("Invalid MCQ structure."); } } else { throw new Error("Not a JSON array."); } } catch (parseError) { console.warn("Failed to parse MCQ JSON:", parseError.message); aiMsgData.text = "MCQ format error.\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null; } } } catch (textError) { console.error("Error extracting text:", textError); aiMsgData.text = "Error extracting text."; displayAsError = true; } } else if (candidate.finishReason === 'MAX_TOKENS') { console.warn("Response stopped: MAX_TOKENS."); aiMsgData.text = rawAiText + "\n\n(Response may be truncated)"; displayAsError = false; } else { console.warn("API finish reason:", candidate.finishReason); aiMsgData.text = `Response finished: ${candidate.finishReason || 'Unknown'}`; displayAsError = false; } } else { console.error("API Error: No candidates."); aiMsgData.text = "Error: No response data."; displayAsError = true; } try { await messagesColRef.add(aiMsgData); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); console.log("AI response/error saved."); } catch (saveError) { console.error("Error saving AI response:", saveError); displayError(`Failed to save AI response.`); } } catch (error) { console.error("Error during send process:", error); removeMessageElement(thinking); const errorText = `Error: ${error.message || "Send failed."}`; displayError(errorText); try { await messagesColRef.add({ role: "model", text: errorText, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); } catch (saveError) { console.error("Failed to save error message:", saveError); } } finally { setLoadingState(false); if (!isTestMode && !isReviewMode && activeChatId) { setTimeout(() => userInput.focus(), 100); } } }
+        async function handleSendMessage() { /* ... (no changes needed in this core function from v9.8 after adding checks in uploadAndProcessFile) ... */
+            const userMessageTextRaw = userInput.value.trim(); const mediaItemsToSend = [...selectedMediaItems];
+            console.log("handleSendMessage: Text:", userMessageTextRaw, "Media items:", mediaItemsToSend.length);
+            if (!currentUser || !activeChatId || !API_KEY || !genAI) { displayError("Cannot send message. Check login, chat selection, API key, and SDK status."); return; }
+            if (!userMessageTextRaw && mediaItemsToSend.length === 0) { return; }
+            if (sendButton.disabled || isRecording) { return; }
+            setLoadingState(true, "Preparing message...");
+            userInput.value = ''; autoGrowTextarea(); const isMCQRequest = mcqModeCheckbox.checked; if (isMCQRequest) mcqModeCheckbox.checked = false; removeAllSelectedMedia();
+            const timestamp = firebase.firestore.FieldValue.serverTimestamp(); const messagesColRef = db.collection('chats').doc(activeChatId).collection('messages'); const chatDocRef = db.collection('chats').doc(activeChatId);
+            const userMsgData = { role: "user", text: userMessageTextRaw, timestamp: timestamp };
+            const singleAudioItem = mediaItemsToSend.find(item => item.type === 'audio'); const imageItems = mediaItemsToSend.filter(item => item.type === 'image'); const pdfItems = mediaItemsToSend.filter(item => item.type === 'pdf'); let potentialTestTitle = null;
+            if (singleAudioItem) { userMsgData.mediaType = 'audio'; userMsgData.mediaData = singleAudioItem.base64; userMsgData.mediaMimeType = singleAudioItem.mimeType; userMsgData.mediaName = singleAudioItem.name; }
+            else if (imageItems.length === 1) { userMsgData.mediaType = 'image'; userMsgData.mediaName = imageItems[0].name; userMsgData.mediaMimeType = imageItems[0].mimeType; if (!imageItems[0].base64) { try { imageItems[0].base64 = await readFileAsBase64(imageItems[0].file); } catch (e) {console.error("Err reading img for DB", e)} } userMsgData.mediaData = imageItems[0].base64; }
+            else if (imageItems.length > 1) { userMsgData.mediaType = 'multi-image'; userMsgData.mediaCount = imageItems.length; userMsgData.mediaNames = imageItems.map(img => img.name); }
+            else if (pdfItems.length > 0) { userMsgData.mediaType = 'multi-pdf'; userMsgData.mediaCount = pdfItems.length; userMsgData.mediaNames = pdfItems.map(pdf => pdf.name); }
+            const youtubeMatch = userMessageTextRaw.match(youtubeRegex); if (youtubeMatch) userMsgData.youtubeVideoId = youtubeMatch[1];
+            try { const chatSnap = await chatDocRef.get(); let isFirstUserMessageInNewChat = false; if (chatSnap.exists && chatSnap.data().title === NEW_CHAT_TITLE) { const messagesSnap = await messagesColRef.limit(1).get(); if (messagesSnap.empty) isFirstUserMessageInNewChat = true; } await messagesColRef.add(userMsgData); await chatDocRef.update({ lastUpdated: timestamp }); console.log("User message saved."); if (isFirstUserMessageInNewChat) { let titleSource = userMessageTextRaw || (mediaItemsToSend[0]?.name) || NEW_CHAT_TITLE; const generatedTitle = generateChatTitle(titleSource); if (generatedTitle !== NEW_CHAT_TITLE) await updateActiveChatTitle(generatedTitle); } } catch(error) { console.error("Error saving user msg:", error); displayError("Failed to save your message."); setLoadingState(false); return; }
+            const thinking = displayMessage("Thinking...", 'ai', ['thinking']); scrollToBottom();
+            const partsForApi = []; let userTextForPrompt = userMessageTextRaw;
+            if (isMCQRequest) { let baseTitle = userMessageTextRaw || (mediaItemsToSend[0]?.name) || "Generated Test"; potentialTestTitle = generateChatTitle(baseTitle) + ` (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`; const mcqInstructions = `\n\nPlease generate multiple choice questions... [rest of instructions]`; userTextForPrompt = userTextForPrompt ? userTextForPrompt + mcqInstructions : mcqInstructions; console.log("MCQ mode active."); }
+            if (userTextForPrompt) partsForApi.push({ text: userTextForPrompt });
+            try {
+                if (singleAudioItem) { const base64Data = singleAudioItem.base64.substring(singleAudioItem.base64.indexOf(',') + 1); partsForApi.push({ inlineData: { mimeType: singleAudioItem.mimeType, data: base64Data } }); console.log(`Added audio inlineData.`); }
+                else if (imageItems.length > 0) { const imageBase64Promises = imageItems.map(item => item.base64 || readFileAsBase64(item.file)); const imageBase64Results = await Promise.all(imageBase64Promises); imageBase64Results.forEach((b64, index) => { const mime = imageItems[index].mimeType; const data = b64.substring(b64.indexOf(',') + 1); if(data && mime) partsForApi.push({ inlineData: { mimeType: mime, data: data } }); else console.error(`Missing data/mime for image: ${imageItems[index].name}`); }); console.log(`Added ${imageItems.length} images inlineData.`); }
+                else if (pdfItems.length > 0) { console.log(`Uploading ${pdfItems.length} PDF(s)...`); const uploadPromises = pdfItems.map((item, index) => uploadAndProcessFile(item.file, index, pdfItems.length)); const uploadedFiles = await Promise.all(uploadPromises); uploadedFiles.forEach(file => { if (file?.uri && file?.mimeType) partsForApi.push({ fileData: { mimeType: file.mimeType, fileUri: file.uri } }); else { console.error("Upload result invalid:", file); throw new Error("Failed to get PDF details after upload."); } }); console.log(`Added ${pdfItems.length} PDFs fileData.`); }
+                if (partsForApi.length === 0) throw new Error("No content to send.");
+                console.log("Calling Gemini API via SDK..."); setLoadingState(true, "Generating response...");
+                const model = genAI.getGenerativeModel({ model: MODEL_NAME, safetySettings: [ { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" }, ] });
+                const historyForSDK = currentChatHistory.map(msg => ({ role: msg.role, parts: msg.parts.filter(part => part.text) })).filter(msg => msg.parts.length > 0);
+                const contentsRequest = [ ...historyForSDK, { role: "user", parts: partsForApi } ];
+                const result = await model.generateContent({ contents: contentsRequest }); const response = result.response;
+                removeMessageElement(thinking); let aiMsgData = { role: "model", text: "Error: No response.", timestamp: firebase.firestore.FieldValue.serverTimestamp(), mcqData: null, mcqTitle: null }; let displayAsError = true; let rawAiText = ""; let blocked = false;
+                if (response.promptFeedback?.blockReason) { aiMsgData.text = `Blocked (Prompt): ${response.promptFeedback.blockReason}`; blocked = true; console.warn("Prompt blocked:", response.promptFeedback); }
+                else if (response.candidates?.length > 0) { const candidate = response.candidates[0]; if (candidate.finishReason === 'SAFETY') { aiMsgData.text = `Blocked (Safety): ${candidate.safetyRatings?.map(r => `${r.category.replace('HARM_CATEGORY_','')} (${r.probability})`).join(', ') || '?'}`; blocked = true; console.warn("Response blocked (Safety):", candidate.safetyRatings); } else if (candidate.finishReason === 'RECITATION') { aiMsgData.text = `Blocked (Recitation)`; blocked = true; console.warn("Response blocked (Recitation)"); } else if (candidate.content?.parts?.length > 0) { try { rawAiText = response.text(); aiMsgData.text = rawAiText; displayAsError = false; if (isMCQRequest && !blocked) { try { const jsonMatch = rawAiText.match(/```json\s*([\s\S]*?)\s*```/); const jsonString = jsonMatch ? jsonMatch[1].trim() : rawAiText.trim(); if (jsonString.startsWith('[') && jsonString.endsWith(']')) { const mcqs = JSON.parse(jsonString); const isValid = Array.isArray(mcqs) && mcqs.length > 0 && mcqs.every(q => q.question?.en && q.options?.length === 4 && q.options.every(opt=>opt.en) && q.answer && q.explanation?.en); if (isValid) { mcqs.forEach(q => { q.question.ta = q.question.ta || q.question.en; q.explanation.ta = q.explanation.ta || q.explanation.en; q.options.forEach(opt => { opt.ta = opt.ta || opt.en; }); }); aiMsgData.text = `Generated ${mcqs.length} MCQs.`; aiMsgData.mcqData = mcqs; aiMsgData.mcqTitle = potentialTestTitle; console.log("MCQs parsed."); } else throw new Error("Invalid MCQ structure."); } else throw new Error("Not JSON array."); } catch (parseError) { console.warn("Failed parse MCQ:", parseError.message); aiMsgData.text = "MCQ format error.\n\n" + rawAiText; displayAsError = true; aiMsgData.mcqData = null; aiMsgData.mcqTitle = null; } } } catch (textError) { console.error("Error extracting text:", textError); aiMsgData.text = "Error extracting text."; displayAsError = true; } } else if (candidate.finishReason === 'MAX_TOKENS') { aiMsgData.text = rawAiText + "\n\n(Response truncated)"; displayAsError = false; } else { aiMsgData.text = `Response finished: ${candidate.finishReason || 'OK'}`; displayAsError = false; } } else { console.error("API Error: No candidates."); aiMsgData.text = "Error: No response data."; }
+                try { await messagesColRef.add(aiMsgData); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); console.log("AI response/error saved."); } catch (saveError) { console.error("Error saving AI response:", saveError); displayError(`Failed to save AI response.`); }
+            } catch (error) { console.error("Error during send process:", error); removeMessageElement(thinking); const errorText = `Error: ${error.message || "Send failed."}`; displayError(errorText); try { await messagesColRef.add({ role: "model", text: errorText, timestamp: firebase.firestore.FieldValue.serverTimestamp() }); await chatDocRef.update({ lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }); } catch (saveError) { console.error("Failed save error msg:", saveError); }
+            } finally { setLoadingState(false); if (!isTestMode && !isReviewMode && activeChatId) setTimeout(() => userInput.focus(), 100); }
+        }
 
 
         // --- Chat Title Generation/Update ---
@@ -790,16 +897,79 @@
 
         // --- UI & Message Display Helpers ---
         function autoGrowTextarea() { /* ... (no changes needed) ... */ userInput.style.height='auto'; userInput.style.height=(userInput.scrollHeight)+'px'; }
-        function handleInputKeydown(event) { /* ... (no changes needed) ... */ if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(!sendButton.disabled) handleSendMessage();} }
+        function handleInputKeydown(event) { /* ... (logic updated in v9.8, should be fine) ... */ if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();if(!sendButton.disabled) handleSendMessage();} }
         function handleSuggestionClick(event) { /* ... (no changes needed) ... */ if(event.target.classList.contains('suggestion-chip')){userInput.value=event.target.dataset.prompt||'';autoGrowTextarea();userInput.focus();} }
         function displayError(text) { /* ... (no changes needed) ... */ console.error("Displaying Error:", text); displayMessage(`${text}`, 'ai', ['error-message']); scrollToBottom(); }
         function scrollToBottom(immediate = false) { /* ... (no changes needed) ... */ chatArea.scrollTo({top:chatArea.scrollHeight,behavior:immediate?'auto':'smooth'}); }
         function removeMessageElement(element) { /* ... (no changes needed) ... */ if(element && element.parentNode === chatArea) { try { chatArea.removeChild(element); } catch(e) { /* ignore */ } } }
 
-        function updateButtonStates(isLoading = false) { /* ... (same as v9.8) ... */ const isLoggedIn = !!currentUser; const isSDKReady = !!(API_KEY && genAI); const isChatSelected = !!activeChatId; const isAppReady = isLoggedIn && isSDKReady; const canSendMessage = isAppReady && isChatSelected && !isLoading && !isRecording; const canUseSidebarControls = isLoggedIn && !isLoading && !isRecording; userInput.disabled = !isAppReady || !isChatSelected || isLoading || isRecording; sendButton.disabled = !canSendMessage; mcqModeCheckbox.disabled = !canSendMessage; imageUploadButton.disabled = !canSendMessage; pdfUploadButton.disabled = !canSendMessage; audioUploadButton.disabled = !canSendMessage; let recordButtonDisabled = !isAppReady || !isChatSelected || isLoading; if (isRecording) { recordButtonDisabled = false; } recordAudioButton.disabled = recordButtonDisabled; startChatButton.disabled = !isLoggedIn || isLoading || isRecording; testSearchInput.disabled = !isLoggedIn || isLoading || isRecording; decreaseTextBtn.disabled = !isLoggedIn || isLoading || isRecording || currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER; increaseTextBtn.disabled = !isLoggedIn || isLoading || isRecording || currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER; themeToggleButton.disabled = isLoading || isRecording; loginBtn.disabled = isLoading; logoutBtn.disabled = isLoading; }
-        function setLoadingState(isLoading, message = "Generating...") { /* ... (same as v9.8) ... */ console.log(`setLoadingState: ${isLoading}, Message: ${message}`); updateButtonStates(isLoading); let placeholderText = ""; if (isRecording) { placeholderText = "Recording audio..."; } else if (isLoading) { placeholderText = message; } else if (!currentUser) { placeholderText = "Please log in"; } else if (!API_KEY || !genAI) { placeholderText = "API Key/SDK Error. Check settings."; } else if (!activeChatId) { placeholderText = "Select or create a chat"; } else { placeholderText = "Enter prompt, attach media, or paste URL"; } userInput.placeholder = placeholderText; }
-        function switchView(viewName, cameFromTests = false) { /* ... (same as v9.8) ... */ console.log("Switching view to:", viewName); chatView.classList.remove('active'); reviewView.classList.remove('active'); testView.classList.remove('active'); appContainer.classList.remove('hidden'); isTestMode = false; isReviewMode = false; cameFromAllTestsList = cameFromTests; saveReviewBtn.style.display = 'none'; exitReviewBtn.style.display = 'none'; if(viewName === 'test'){ appContainer.classList.add('hidden'); testView.classList.add('active'); isTestMode = true; } else if(viewName === 'review'){ reviewView.classList.add('active'); isReviewMode = true; exitReviewBtn.style.display = 'inline-block'; exitReviewBtn.textContent = cameFromAllTestsList ? "Back to All Tests" : "Back to Chat"; } else { chatView.classList.add('active'); if (currentUser && activeChatId && API_KEY && genAI && !isRecording) { setTimeout(() => userInput.focus(), 100); } } if (viewName !== 'test' && testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; } }
-        function displayMessage(text, sender, cssClasses = [], appendHtml = null, messageData = null) { /* ... (same as v9.8) ... */ const messageElement = document.createElement('div'); messageElement.classList.add('message', `${sender}-message`); if (cssClasses?.length > 0) messageElement.classList.add(...cssClasses); let hasContent = false; if (messageData?.mediaType === 'image' && messageData.mediaData) { try { const img = document.createElement('img'); img.src = messageData.mediaData; img.alt = messageData.mediaName || "Uploaded Image"; img.classList.add('uploaded-image'); img.loading = "lazy"; img.onerror = () => { img.alt = "Image load error"; img.src = ""; }; messageElement.appendChild(img); hasContent = true; } catch (e) { console.error("Error creating image element:", e); } } else if (messageData?.mediaType === 'multi-image' && messageData.mediaCount > 0) { try { const indicator = document.createElement('div'); indicator.classList.add('multi-media-indicator'); indicator.textContent = `(${messageData.mediaCount} image${messageData.mediaCount > 1 ? 's' : ''} sent: ${messageData.mediaNames?.join(', ') || ''})`; messageElement.appendChild(indicator); hasContent = true; } catch (e) { console.error("Error creating multi-image indicator:", e); } } else if (messageData?.mediaType === 'multi-pdf' && messageData.mediaCount > 0) { try { const indicator = document.createElement('div'); indicator.classList.add('multi-media-indicator'); indicator.textContent = `(${messageData.mediaCount} PDF${messageData.mediaCount > 1 ? 's' : ''} sent: ${messageData.mediaNames?.join(', ') || ''})`; messageElement.appendChild(indicator); hasContent = true; } catch (e) { console.error("Error creating multi-PDF indicator:", e); } } else if (messageData?.mediaType === 'audio' && messageData.mediaData) { try { const audioContainer = document.createElement('div'); audioContainer.classList.add('chat-audio-player'); const audioPlayer = document.createElement('audio'); audioPlayer.src = messageData.mediaData; audioPlayer.controls = true; audioPlayer.preload = "metadata"; if(messageData.mediaName) audioPlayer.title = messageData.mediaName; audioPlayer.onerror = () => { console.warn("Error loading audio player"); audioContainer.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(Audio load error)</span>`; }; audioContainer.appendChild(audioPlayer); messageElement.appendChild(audioContainer); hasContent = true; } catch (e) { console.error("Error creating audio element:", e); } } if (text) { const messageContentContainer = document.createElement('div'); try { const tempDiv = document.createElement('div'); tempDiv.innerText = text; let formattedText = tempDiv.innerHTML; if (messageData?.mediaType !== 'image') { formattedText = formattedText.replace(imageUrlRegex, (match, imgUrl) => `<img src="${imgUrl}" class="chat-image" alt="Chat Image" loading="lazy" onerror="this.alt='Image URL load error'; this.src='';">`); } formattedText = formattedText.replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`).replace(/`([^`]+)`/g, (match, code) => `<code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>').replace(/\n/g, '<br>'); messageContentContainer.innerHTML = formattedText; messageElement.appendChild(messageContentContainer); hasContent = true; if (text.includes('$') || text.includes('\\') || text.includes('^') || text.includes('_')) { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { setTimeout(() => { MathJax.typesetPromise([messageContentContainer]).catch(err => console.error('MathJax typesetting error:', err)); }, 50); } } } catch (e) { console.error("Error formatting text content:", e); } } if (messageData?.youtubeVideoId) { try { const youtubeEmbedDiv = document.createElement('div'); youtubeEmbedDiv.classList.add('youtube-embed-container'); const iframe = document.createElement('iframe'); iframe.classList.add('chat-video'); iframe.src = `https://www.youtube.com/embed/${messageData.youtubeVideoId}`; iframe.title = "YouTube video player"; iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; iframe.allowFullscreen = true; iframe.loading = "lazy"; iframe.onerror = () => { youtubeEmbedDiv.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(YouTube embed error)</span>`; }; youtubeEmbedDiv.appendChild(iframe); messageElement.appendChild(youtubeEmbedDiv); hasContent = true; } catch (e) { console.error("Error creating YouTube embed:", e); } } if (messageData?.role === 'model' && messageData?.mcqData?.length > 0) { try { displayMCQOffer(messageData.mcqData, messageData.mcqTitle, messageElement); hasContent = true; } catch (e) { console.error("Error displaying MCQ offer:", e); } } else if (appendHtml) { try { const appendDiv = document.createElement('div'); appendDiv.innerHTML = appendHtml; while (appendDiv.firstChild) { messageElement.appendChild(appendDiv.firstChild); } hasContent = true; } catch (e) { console.error("Error appending raw HTML:", e); } } if (hasContent || cssClasses.includes('thinking')) { chatArea.appendChild(messageElement); } else { console.warn(`Skipping display of empty message. Sender: ${sender}`); } return messageElement; }
+        /**
+         * Updates the enabled/disabled state of various UI elements based on app state.
+         * Centralized logic for button states. (Refined in v9.9)
+         */
+         function updateButtonStates(isLoading = false) {
+             const isLoggedIn = !!currentUser;
+             // ** SDK Ready Check: Includes check for necessary functions **
+             const isSDKReady = !!(API_KEY && genAI && typeof genAI.uploadFile === 'function' && typeof genAI.getFile === 'function');
+             const isChatSelected = !!activeChatId;
+             const isAppReadyForAI = isLoggedIn && isSDKReady;
+             const canInteractWithChat = isAppReadyForAI && isChatSelected && !isLoading && !isRecording;
+
+             // Input Area Buttons
+             userInput.disabled = !canInteractWithChat; // Enable only when ready for input
+             sendButton.disabled = !canInteractWithChat;
+             mcqModeCheckbox.disabled = !canInteractWithChat;
+             imageUploadButton.disabled = !canInteractWithChat;
+             pdfUploadButton.disabled = !canInteractWithChat;
+             audioUploadButton.disabled = !canInteractWithChat;
+
+             // Record Button
+             let recordButtonDisabled = !isAppReadyForAI || !isChatSelected || isLoading;
+             if (isRecording) recordButtonDisabled = false; // Always allow stopping
+             recordAudioButton.disabled = recordButtonDisabled;
+
+             // Sidebar Buttons
+             startChatButton.disabled = !isLoggedIn || isLoading || isRecording;
+             testSearchInput.disabled = !isLoggedIn || isLoading || isRecording;
+
+             // Settings Buttons
+             decreaseTextBtn.disabled = !isLoggedIn || isLoading || isRecording || currentTextSizeMultiplier <= MIN_TEXT_SIZE_MULTIPLIER;
+             increaseTextBtn.disabled = !isLoggedIn || isLoading || isRecording || currentTextSizeMultiplier >= MAX_TEXT_SIZE_MULTIPLIER;
+             themeToggleButton.disabled = isLoading || isRecording;
+
+             // Auth Buttons
+             loginBtn.disabled = isLoading;
+             logoutBtn.disabled = isLoading;
+         }
+
+        /**
+         * Sets the loading state (disables/enables inputs) and updates placeholder.
+         * (Refined in v9.9)
+         */
+        function setLoadingState(isLoading, message = "Generating...") {
+            console.log(`setLoadingState: ${isLoading}, Message: ${message}`);
+            updateButtonStates(isLoading); // Centralize button state logic
+
+            // --- Update placeholder text ---
+            let placeholderText = "";
+            if (isRecording) { placeholderText = "Recording audio..."; }
+            else if (isLoading) { placeholderText = message; }
+            else if (!currentUser) { placeholderText = "Please log in"; }
+            else if (!API_KEY) { placeholderText = "API Key missing. Enter in prompt or check settings."; }
+            else if (!isAISdkReady) { placeholderText = "AI SDK Error. Check console or reload.";}
+            else if (!genAI || typeof genAI.uploadFile !== 'function') { placeholderText = "AI Init Error. Check console or reload."; } // Specific check
+            else if (!activeChatId) { placeholderText = "Select or create a chat"; }
+            else { placeholderText = "Enter prompt, attach media, or paste URL"; }
+            userInput.placeholder = placeholderText;
+
+            // If loading is finished and conditions met, focus input
+            if (!isLoading && currentUser && activeChatId && isAISdkReady && genAI) {
+                setTimeout(() => userInput.focus(), 50); // Short delay
+            }
+        }
+
+        function switchView(viewName, cameFromTests = false) { /* ... (no changes needed) ... */ console.log("Switching view to:", viewName); chatView.classList.remove('active'); reviewView.classList.remove('active'); testView.classList.remove('active'); appContainer.classList.remove('hidden'); isTestMode = false; isReviewMode = false; cameFromAllTestsList = cameFromTests; saveReviewBtn.style.display = 'none'; exitReviewBtn.style.display = 'none'; if(viewName === 'test'){ appContainer.classList.add('hidden'); testView.classList.add('active'); isTestMode = true; } else if(viewName === 'review'){ reviewView.classList.add('active'); isReviewMode = true; exitReviewBtn.style.display = 'inline-block'; exitReviewBtn.textContent = cameFromAllTestsList ? "Back to All Tests" : "Back to Chat"; } else { chatView.classList.add('active'); if (currentUser && activeChatId && isAISdkReady && genAI && !isRecording) { setTimeout(() => userInput.focus(), 100); } } if (viewName !== 'test' && testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; } }
+        function displayMessage(text, sender, cssClasses = [], appendHtml = null, messageData = null) { /* ... (no changes needed) ... */ const messageElement = document.createElement('div'); messageElement.classList.add('message', `${sender}-message`); if (cssClasses?.length > 0) messageElement.classList.add(...cssClasses); let hasContent = false; if (messageData?.mediaType === 'image' && messageData.mediaData) { try { const img = document.createElement('img'); img.src = messageData.mediaData; img.alt = messageData.mediaName || "Uploaded Image"; img.classList.add('uploaded-image'); img.loading = "lazy"; img.onerror = () => { img.alt = "Image load error"; img.src = ""; }; messageElement.appendChild(img); hasContent = true; } catch (e) { console.error("Error creating image element:", e); } } else if (messageData?.mediaType === 'multi-image' && messageData.mediaCount > 0) { try { const indicator = document.createElement('div'); indicator.classList.add('multi-media-indicator'); indicator.textContent = `(${messageData.mediaCount} image${messageData.mediaCount > 1 ? 's' : ''} sent: ${messageData.mediaNames?.join(', ') || ''})`; messageElement.appendChild(indicator); hasContent = true; } catch (e) { console.error("Error creating multi-image indicator:", e); } } else if (messageData?.mediaType === 'multi-pdf' && messageData.mediaCount > 0) { try { const indicator = document.createElement('div'); indicator.classList.add('multi-media-indicator'); indicator.textContent = `(${messageData.mediaCount} PDF${messageData.mediaCount > 1 ? 's' : ''} sent: ${messageData.mediaNames?.join(', ') || ''})`; messageElement.appendChild(indicator); hasContent = true; } catch (e) { console.error("Error creating multi-PDF indicator:", e); } } else if (messageData?.mediaType === 'audio' && messageData.mediaData) { try { const audioContainer = document.createElement('div'); audioContainer.classList.add('chat-audio-player'); const audioPlayer = document.createElement('audio'); audioPlayer.src = messageData.mediaData; audioPlayer.controls = true; audioPlayer.preload = "metadata"; if(messageData.mediaName) audioPlayer.title = messageData.mediaName; audioPlayer.onerror = () => { console.warn("Error loading audio player"); audioContainer.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(Audio load error)</span>`; }; audioContainer.appendChild(audioPlayer); messageElement.appendChild(audioContainer); hasContent = true; } catch (e) { console.error("Error creating audio element:", e); } } if (text) { const messageContentContainer = document.createElement('div'); try { const tempDiv = document.createElement('div'); tempDiv.innerText = text; let formattedText = tempDiv.innerHTML; if (messageData?.mediaType !== 'image') { formattedText = formattedText.replace(imageUrlRegex, (match, imgUrl) => `<img src="${imgUrl}" class="chat-image" alt="Chat Image" loading="lazy" onerror="this.alt='Image URL load error'; this.src='';">`); } formattedText = formattedText.replace(/```([\s\S]*?)```/g, (match, code) => `<pre><code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>`).replace(/`([^`]+)`/g, (match, code) => `<code>${code.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code>`).replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>').replace(/\n/g, '<br>'); messageContentContainer.innerHTML = formattedText; messageElement.appendChild(messageContentContainer); hasContent = true; if (text.includes('$') || text.includes('\\') || text.includes('^') || text.includes('_')) { if (typeof MathJax !== "undefined" && MathJax.typesetPromise) { setTimeout(() => { MathJax.typesetPromise([messageContentContainer]).catch(err => console.error('MathJax typesetting error:', err)); }, 50); } } } catch (e) { console.error("Error formatting text content:", e); } } if (messageData?.youtubeVideoId) { try { const youtubeEmbedDiv = document.createElement('div'); youtubeEmbedDiv.classList.add('youtube-embed-container'); const iframe = document.createElement('iframe'); iframe.classList.add('chat-video'); iframe.src = `https://www.youtube.com/embed/${messageData.youtubeVideoId}`; iframe.title = "YouTube video player"; iframe.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"; iframe.allowFullscreen = true; iframe.loading = "lazy"; iframe.onerror = () => { youtubeEmbedDiv.innerHTML = `<span style='font-size:0.8em; color:var(--error-text);'>(YouTube embed error)</span>`; }; youtubeEmbedDiv.appendChild(iframe); messageElement.appendChild(youtubeEmbedDiv); hasContent = true; } catch (e) { console.error("Error creating YouTube embed:", e); } } if (messageData?.role === 'model' && messageData?.mcqData?.length > 0) { try { displayMCQOffer(messageData.mcqData, messageData.mcqTitle, messageElement); hasContent = true; } catch (e) { console.error("Error displaying MCQ offer:", e); } } else if (appendHtml) { try { const appendDiv = document.createElement('div'); appendDiv.innerHTML = appendHtml; while (appendDiv.firstChild) { messageElement.appendChild(appendDiv.firstChild); } hasContent = true; } catch (e) { console.error("Error appending raw HTML:", e); } } if (hasContent || cssClasses.includes('thinking')) { chatArea.appendChild(messageElement); } else { console.warn(`Skipping display of empty message. Sender: ${sender}`); } return messageElement; }
 
 
         // --- MCQ/Test Specific Functions ---
@@ -828,7 +998,7 @@
         function enterTestTitleEditMode(listItem, reviewId) { /* ... (no changes needed) ... */ const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const currentTitle = titleSpan.textContent; titleSpan.style.display = 'none'; detailSpan.style.display = 'none'; if(controlsDiv) controlsDiv.style.display = 'none'; if (infoDiv.querySelector('.test-item-edit-mode')) return; const editContainer = document.createElement('div'); editContainer.classList.add('test-item-edit-mode'); const input = document.createElement('input'); input.type = 'text'; input.value = currentTitle; input.maxLength = 100; input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { saveTestTitle(listItem, reviewId, input.value); } else if (e.key === 'Escape') { exitTestTitleEditMode(listItem, currentTitle); } }); const saveButton = document.createElement('button'); saveButton.textContent = 'Save'; saveButton.onclick = () => saveTestTitle(listItem, reviewId, input.value); const cancelButton = document.createElement('button'); cancelButton.textContent = 'Cancel'; cancelButton.onclick = () => exitTestTitleEditMode(listItem, currentTitle); editContainer.appendChild(input); editContainer.appendChild(saveButton); editContainer.appendChild(cancelButton); infoDiv.appendChild(editContainer); input.focus(); input.select(); }
         function exitTestTitleEditMode(listItem, originalTitle = null) { /* ... (no changes needed) ... */ const infoDiv = listItem.querySelector('.test-item-info'); const titleSpan = infoDiv.querySelector('.test-item-title'); const detailSpan = infoDiv.querySelector('.test-item-details'); const controlsDiv = infoDiv.querySelector('.test-item-controls'); const editContainer = infoDiv.querySelector('.test-item-edit-mode'); if (editContainer) editContainer.remove(); if (originalTitle !== null && titleSpan) { titleSpan.textContent = originalTitle; titleSpan.title = originalTitle; } if(titleSpan) titleSpan.style.display = ''; if(detailSpan) detailSpan.style.display = ''; if(controlsDiv) controlsDiv.style.display = ''; }
         async function saveTestTitle(listItem, reviewId, newTitle) { /* ... (no changes needed) ... */ const trimmedTitle = newTitle.trim(); if (!trimmedTitle) { alert("Test title cannot be empty."); return; } if (trimmedTitle.length > 100) { alert("Test title is too long (max 100 characters)."); return; } const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.update({ testTitle: trimmedTitle }); console.log("Test title updated successfully:", reviewId); const titleSpan = listItem.querySelector('.test-item-title'); if (titleSpan) { titleSpan.textContent = trimmedTitle; titleSpan.title = trimmedTitle; } const testIndex = allSavedTestsData.findIndex(t => t.id === reviewId); if (testIndex > -1) allSavedTestsData[testIndex].testTitle = trimmedTitle; exitTestTitleEditMode(listItem); } catch (error) { console.error("Error updating test title:", error); alert("Failed to update test title."); } }
-        async function deleteSavedTest(reviewId, listItem) { /* ... (no changes needed) ... */ if (!currentUser || !reviewId) return; listItem.style.opacity = '0.5'; listItem.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.delete(); console.log("Saved test deleted successfully:", reviewId); /* Listener will handle UI update */ alert("Saved test deleted."); } catch (error) { console.error("Error deleting saved test:", error); alert("Failed to delete saved test."); listItem.style.opacity = '1'; listItem.style.pointerEvents = 'auto'; } }
+        async function deleteSavedTest(reviewId, listItem) { /* ... (no changes needed) ... */ if (!currentUser || !reviewId) return; listItem.style.opacity = '0.5'; listItem.style.pointerEvents = 'none'; const docRef = db.collection('testReviews').doc(reviewId); try { await docRef.delete(); console.log("Saved test deleted successfully:", reviewId); alert("Saved test deleted."); } catch (error) { console.error("Error deleting saved test:", error); alert("Failed to delete saved test."); listItem.style.opacity = '1'; listItem.style.pointerEvents = 'auto'; } } // Removed manual list update, listener handles it
         async function startReattempt(reviewId, mode) { /* ... (no changes needed) ... */ console.log(`Attempting reattempt for review ID: ${reviewId}, Mode: ${mode}`); const reviewData = allSavedTestsData.find(t => t.id === reviewId); if (!reviewData) { alert("Error: Could not find the saved review data for reattempt."); return; } const originalMCQs = reviewData.originalMCQs; const hasValidData = originalMCQs?.length > 0 && originalMCQs.every(q => q?.question && q.options && q.answer && q.explanation); if (!hasValidData) { alert("Error: Cannot reattempt. Original test data is missing or invalid."); return; } const summaryQuestions = reviewData.questions || []; let questionsForReattempt = []; switch (mode) { case 'mistaked': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect'); break; case 'skipped': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'skipped'); break; case 'both': questionsForReattempt = originalMCQs.filter((mcq, index) => summaryQuestions[index]?.status === 'incorrect' || summaryQuestions[index]?.status === 'skipped'); break; case 'full': default: questionsForReattempt = [...originalMCQs]; break; } if (questionsForReattempt.length === 0) { alert(`No questions found for the selected reattempt mode ('${mode}').`); return; } const originalTitle = reviewData.testTitle || 'Test'; const reattemptTitle = `${originalTitle} (Reattempt: ${mode})`; startMockTest(questionsForReattempt, reattemptTitle); }
 
     </script>
